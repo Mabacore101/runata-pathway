@@ -71,21 +71,23 @@ import. Use the modern `Notifier`/`NotifierProvider` API for all controllers
 going forward (see `auth_controller.dart` for the pattern) — don't mix in
 the legacy import just because older tutorials/snippets use it.
 
-**Font tokens — ✅ RESOLVED.** Added `google_fonts` (these are the exact
-same 3 families the original site pulls from fonts.googleapis.com, so this
-wraps the same source rather than manually bundling files from scratch).
-`AppFonts` in `core/theme/app_theme.dart` now exposes `display()`/`body()`/
-`mono()` TextStyle factories backed by `GoogleFonts.bricolageGrotesque()` /
-`.inter()` / `.ibmPlexMono()`, wired into `buildStudentTheme()`'s
-`textTheme`. Runtime HTTP fetching is disabled
+**Font tokens — ✅ RESOLVED & VERIFIED (Day 1).** Added `google_fonts` (these
+are the exact same 3 families the original site pulls from
+fonts.googleapis.com, so this wraps the same source rather than manually
+bundling files from scratch). `AppFonts` in `core/theme/app_theme.dart` now
+exposes `display()`/`body()`/`mono()` TextStyle factories backed by
+`GoogleFonts.bricolageGrotesque()` / `.inter()` / `.ibmPlexMono()`, wired
+into `buildStudentTheme()`'s `textTheme`. Runtime HTTP fetching is disabled
 (`GoogleFonts.config.allowRuntimeFetching = false` in `main.dart`) so
-release builds don't depend on the network to render text correctly —
-this requires the actual `.ttf` files bundled under `assets/google_fonts/`
+release builds don't depend on the network to render text correctly — this
+requires the actual `.ttf` files bundled under `assets/google_fonts/`
 (weights: Bricolage Grotesque 600/700/800, Inter 400/500/600/700, IBM Plex
 Mono 400/600/700 — matches every `--disp`/`--mono` usage found in the
-trimmed CSS reference). Parent/Staff work later should reuse `AppFonts`
-rather than reference `GoogleFonts.*` directly, so any future font swap
-only touches one file.
+trimmed CSS reference). **Verified working:** app builds and runs cleanly
+with `allowRuntimeFetching = false`, fonts render correctly on-device (not
+falling back to system font), full test suite green. Parent/Staff work
+later should reuse `AppFonts` rather than reference `GoogleFonts.*`
+directly, so any future font swap only touches one file.
 
 ## 4a. Auth Architecture (added Day 1)
 
@@ -136,13 +138,21 @@ These exist in the current live site's behavior. Default stance below unless ove
 **replicate for now, track as a fix-later backlog item** rather than silently fixing
 (avoids undocumented scope creep vs. the spec).
 
-- [ ] Silent birth-date field failure
-- [ ] Grade score input allows values outside 1–100 clamp (breaks average calculation)
-- [ ] Clubs auto-fill from anchor major is broken
-- [ ] "Mark as Ready" on essay/application sections can be bypassed without meeting criteria
+- [x] Silent birth-date field failure — **DECIDED: NOT replicated, fixed instead.**
+      Unlike the other three bugs on this list, this one is being fixed rather than
+      carried over: an invalid date now shows a direct, visible warning to the
+      student instead of silently failing to save. Deviation from the doc's default
+      "replicate for now" stance — noted here explicitly so it isn't mistaken for
+      an inconsistency later.
+- [ ] Grade score input allows values outside 1–100 clamp (breaks average calculation) —
+      relevant to Day 2's My Grades. Replicate: spinner enforces range, direct text
+      entry bypasses it (matches original site behavior).
+- [ ] Clubs auto-fill from anchor major is broken — relevant to Day 4.
+- [ ] "Mark as Ready" on essay/application sections can be bypassed without meeting
+      criteria — relevant to Day 6.
 
 *(Confirm/adjust this list against the full behavioral spec doc before Day 5–6 work,
-since these live in Application Materials / My Grades / My Clubs.)*
+since two of these live in Application Materials.)*
 
 ## 7. Development Rhythm
 
@@ -152,7 +162,7 @@ of each day = write unit/widget tests for what was just built.** Day 7 shifts fr
 
 ## 8. 7-Day Plan (Student Role) — Day 0 = today, prep only
 
-**Day 0 — Foundation (no screens)**
+**Day 0 — Foundation (no screens) — ✅ DONE**
 - Lock decisions (this doc)
 - Install dependencies
 - Folder skeleton (student/parent/staff, core, shared)
@@ -163,9 +173,11 @@ of each day = write unit/widget tests for what was just built.** Day 7 shifts fr
 **Day 1 — Login + Homepage + shell — ✅ DONE**
 - Choose Role screen (Student functional; Parent/Staff visibly disabled/"coming soon")
 - Student Login Form, generic single-bucket error (no field-specific error, per spec)
-- Student Homepage, all 3 entry points wired (Dashboard / Pathway / Nav Grid)
+- Student Homepage, all 3 entry points wired (Dashboard / Pathway / Nav Grid) — confirmed
+  navigating to reachable stub screens
 - Sign out flow
 - Tests: login repository + controller + router redirect guard (both directions)
+- Font tokens resolved & verified (see section 4 above)
 
 *Actual scope note:* Homepage is 3 clearly-separated entry-point cards, not
 the reference site's fuller single-page layout (dashboard CTA + roadmap +
@@ -173,11 +185,42 @@ the reference site's fuller single-page layout (dashboard CTA + roadmap +
 forms, which don't exist until Day 2–6, so building the fuller version now
 would mostly dead-end. Revisit once those forms exist.
 
-**Day 2 — Standalone forms**
-- Student's Profile (decide birth-date bug stance concretely here)
-- My Tests (test-type rows, duplicate-blocking logic)
-- My Grades (6 semester tabs, fixed + custom subjects, score-clamp bug stance)
-- Last 1–2 hrs: unit tests for grade average calc, test-type duplicate rules
+**Day 2 — Standalone forms — 🔜 TODO (tomorrow)**
+- [x] Birth-date bug stance decided (see Section 6): fixed, not replicated —
+      invalid date shows a direct warning instead of failing silently
+- [ ] Student's Profile — single form, all fields optional (per spec,
+      nothing is required), with one exception to the "no validation"
+      default:
+      - General info: Date of birth (date picker) — field itself stays
+        optional, but if a date IS entered and it's invalid, show a clear
+        visible warning to the student rather than silently failing to
+        save (this is the one deliberate fix vs. the original site, see
+        Section 6)
+      - Phone Number, Address
+      - Parent/Guardian: Name, Phone, Email, Available time
+      - Siblings (textarea)
+      - Medical: Allergies, Regular medicine, Hospital (all textarea)
+      - Transportation: how student gets to/from school
+      - Emergency contact
+      - Persist to Hive
+- [ ] My Tests — repeatable rows:
+      - Target (text), Latest (text), Status (dropdown: Planned/Registered/
+        Taken, defaults to Planned), Date (text)
+      - Duplicate-blocking logic for test types — confirm the exact dedup
+        condition against the behavioral spec before implementing, don't
+        assume
+- [ ] My Grades:
+      - 6 semester tabs
+      - Fixed subject list + custom subjects addable by student
+      - Score input: Number, spec range 1–100; replicate the clamp-bypass
+        bug (spinner enforces range, direct text entry doesn't)
+      - Average calculation must reflect the bug's actual impact (an
+        out-of-range manually-typed score should visibly skew the average,
+        not be silently clamped)
+- [ ] Last 1–2 hrs: unit tests
+      - Grade average calculation — include an explicit test case for the
+        out-of-range/bug scenario, not just the happy path
+      - Test-type duplicate-blocking rule
 
 **Day 3 — Target Universities (heaviest single-form logic — full day)**
 - Explore Majors (multi-select 1–6, mark-top 1–3, anchor gating)
