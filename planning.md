@@ -61,7 +61,7 @@ not something extra dev hours alone can produce.
 
 ### Dependencies installed
 ```
-flutter_riverpod hive hive_flutter go_router
+flutter_riverpod hive hive_flutter go_router google_fonts
 mocktail hive_test build_runner   (dev)
 ```
 
@@ -71,12 +71,21 @@ import. Use the modern `Notifier`/`NotifierProvider` API for all controllers
 going forward (see `auth_controller.dart` for the pattern) — don't mix in
 the legacy import just because older tutorials/snippets use it.
 
-**Font tokens not yet wired (open, needs a decision):** the theme references
-Bricolage Grotesque / Inter / IBM Plex Mono by name (from the original CSS),
-but no font package (`google_fonts`) or bundled `.ttf` assets exist yet, so
-these currently fall back to the system default font. Fine for Day 1's
-functional screens; worth resolving before it matters for visual parity —
-either add `google_fonts` or bundle + register the actual font files.
+**Font tokens — ✅ RESOLVED.** Added `google_fonts` (these are the exact
+same 3 families the original site pulls from fonts.googleapis.com, so this
+wraps the same source rather than manually bundling files from scratch).
+`AppFonts` in `core/theme/app_theme.dart` now exposes `display()`/`body()`/
+`mono()` TextStyle factories backed by `GoogleFonts.bricolageGrotesque()` /
+`.inter()` / `.ibmPlexMono()`, wired into `buildStudentTheme()`'s
+`textTheme`. Runtime HTTP fetching is disabled
+(`GoogleFonts.config.allowRuntimeFetching = false` in `main.dart`) so
+release builds don't depend on the network to render text correctly —
+this requires the actual `.ttf` files bundled under `assets/google_fonts/`
+(weights: Bricolage Grotesque 600/700/800, Inter 400/500/600/700, IBM Plex
+Mono 400/600/700 — matches every `--disp`/`--mono` usage found in the
+trimmed CSS reference). Parent/Staff work later should reuse `AppFonts`
+rather than reference `GoogleFonts.*` directly, so any future font swap
+only touches one file.
 
 ## 4a. Auth Architecture (added Day 1)
 
