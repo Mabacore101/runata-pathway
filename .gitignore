@@ -45,3 +45,4 @@ app.*.map.json
 /android/app/release
 
 base64_to_png.py
+encoded.txt
