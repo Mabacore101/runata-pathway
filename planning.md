@@ -56,14 +56,20 @@ not something extra dev hours alone can produce.
 | Local storage | **Hive** (over sqflite) | Data is mostly flexible objects/lists (test rows, portfolio entries, tabbed grades), not relational — Hive skips schema/migration overhead |
 | Backend | **Local-only for now** | No Supabase credentials on hand yet; original site's own Supabase script tag is optional/degrades to offline, so this mirrors that default |
 | Routing | **go_router** | Standard modern Flutter routing choice |
-| Testing | `flutter_test` + `mocktail` + `hive_test` | Traditional test-after-code flow, not TDD |
+| Testing | `flutter_test` + `mocktail` + `hive_ce_test` | Traditional test-after-code flow, not TDD |
 | iOS | Code should be correct, but **unverified** — no Mac access currently. Verify when Mac access exists. |
 
 ### Dependencies installed
 ```
-flutter_riverpod hive hive_flutter go_router google_fonts
-mocktail hive_test build_runner   (dev)
+flutter_riverpod hive_ce hive_ce_flutter go_router google_fonts
+mocktail hive_ce_test build_runner hive_ce_generator   (dev)
 ```
+
+**Hive → Hive CE swap (Day 2):** original `hive`/`hive_flutter` packages are
+deprecated/unmaintained; swapped to the community-maintained `hive_ce` /
+`hive_ce_flutter` (+ `hive_ce_generator`, `hive_ce_test` in dev deps) before
+actually wiring persistence up for the first time — see the Day 0 gap note
+below for why this was needed now rather than earlier.
 
 **Riverpod version note (found Day 1):** installed `flutter_riverpod` is on
 3.x, where `StateNotifier`/`StateNotifierProvider` moved to a `legacy.dart`
@@ -162,13 +168,30 @@ of each day = write unit/widget tests for what was just built.** Day 7 shifts fr
 
 ## 8. 7-Day Plan (Student Role) — Day 0 = today, prep only
 
-**Day 0 — Foundation (no screens) — ✅ DONE**
-- Lock decisions (this doc)
-- Install dependencies
-- Folder skeleton (student/parent/staff, core, shared)
-- Data models for all 6 Pathway forms (from field/datatype doc)
-- Skeleton routing: Login → Choose Role → Student Homepage (placeholder screens, real nav)
-- Shared theming (colors, typography, buttons)
+**Day 0 — Foundation (no screens) — ✅ GAP FIXED (Day 2 session)**
+- Lock decisions (this doc) — ✅
+- Install dependencies — ✅
+- Folder skeleton (student/parent/staff, core, shared) — ✅
+- Data models for all 6 Pathway forms (from field/datatype doc) — ⚠️ **3 of 6
+  done** (Profile, Tests, Grades — the ones Day 2 needs). Target
+  Universities/My Clubs/Application Materials remain, scheduled for Days
+  3/4/5 per the existing plan below — this was never meant to be all 6 at
+  once, just corrected to reflect 3 are real now, not 0.
+  - `initHive()` in `core/persistence/hive_registrar.dart`, called from
+    `main.dart` before `runApp()` — verified by direct file inspection
+  - Swapped to `hive_ce`/`hive_ce_flutter` (see dependency note above)
+  - `@HiveType`/`@HiveField` models + generated adapters via
+    `hive_ce_generator`, auto-discovered (no hand-maintained registration
+    list to forget again)
+  - Verified: `flutter test` passes (round-trip tests included), app runs,
+    and `app_router.dart`/`app_theme.dart`/`auth_controller.dart` are
+    byte-for-byte unchanged — the fix is additive, Day 1's flow is intact
+- Skeleton routing: Login → Choose Role → Student Homepage (placeholder screens, real nav) — ✅
+- Shared theming (colors, typography, buttons) — ✅
+
+*(This gap was found during Day 2 prep after the original Day 1 coding chat
+session became unresponsive; fixed properly in a fresh session on
+2026-07-16 before any Day 2 form work began.)*
 
 **Day 1 — Login + Homepage + shell — ✅ DONE**
 - Choose Role screen (Student functional; Parent/Staff visibly disabled/"coming soon")
@@ -185,7 +208,12 @@ the reference site's fuller single-page layout (dashboard CTA + roadmap +
 forms, which don't exist until Day 2–6, so building the fuller version now
 would mostly dead-end. Revisit once those forms exist.
 
-**Day 2 — Standalone forms — 🔜 TODO (tomorrow)**
+**Day 2 — Standalone forms — 🔜 IN PROGRESS (Step 0 done, forms next)**
+- [x] **STEP 0 — Fix the Day 0 gap — DONE, verified.** `hive_ce` wired up,
+      3 models built (Profile/Tests/Grades) with generated adapters,
+      `initHive()` called before `runApp()`, round-trip tests passing,
+      zero regression to existing Day 1 code (router/theme/auth confirmed
+      byte-for-byte unchanged).
 - [x] Birth-date bug stance decided (see Section 6): fixed, not replicated —
       invalid date shows a direct warning instead of failing silently
 - [ ] Student's Profile — single form, all fields optional (per spec,
