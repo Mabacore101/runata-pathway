@@ -65,6 +65,44 @@ flutter_riverpod hive hive_flutter go_router
 mocktail hive_test build_runner   (dev)
 ```
 
+**Riverpod version note (found Day 1):** installed `flutter_riverpod` is on
+3.x, where `StateNotifier`/`StateNotifierProvider` moved to a `legacy.dart`
+import. Use the modern `Notifier`/`NotifierProvider` API for all controllers
+going forward (see `auth_controller.dart` for the pattern) — don't mix in
+the legacy import just because older tutorials/snippets use it.
+
+**Font tokens not yet wired (open, needs a decision):** the theme references
+Bricolage Grotesque / Inter / IBM Plex Mono by name (from the original CSS),
+but no font package (`google_fonts`) or bundled `.ttf` assets exist yet, so
+these currently fall back to the system default font. Fine for Day 1's
+functional screens; worth resolving before it matters for visual parity —
+either add `google_fonts` or bundle + register the actual font files.
+
+## 4a. Auth Architecture (added Day 1)
+
+- **Choose Role + Login live in `features/auth/`, not nested under
+  `features/student/`.** They sit above all 3 roles (Parent/Staff will use
+  the same Choose Role screen and a similar login shape later), so they
+  didn't belong inside the student folder even though only Student is wired
+  up today.
+- **Choose Role shows all 5 original buttons** (Student / Parent / Teacher /
+  Counsellor / Coordinator) for visual parity with the live site — only
+  Student is enabled, the other 4 are visibly present with a "Coming soon"
+  tag rather than hidden. Matches the "visibly disabled" instruction in the
+  Day 1 scope more literally than collapsing straight to 3 buttons.
+- **Login form is Student ID + password, single generic error bucket** —
+  matches the QA'd behavioral spec's documented flow, not the "class + name
+  autocomplete" offline-demo code path also present in the reference
+  source. Validated against a small local mock roster
+  (`LocalStudentAuthRepository`) since there's no backend yet — same
+  password-defaults-to-Student-ID convention as the reference site.
+- **Router guard uses `refreshListenable`, not just `redirect`.** The
+  `redirect` guard alone only re-runs on an explicit navigation call.
+  `refreshListenable` bridges auth-state changes into a fresh redirect
+  check even with no navigation attached — matters once session persistence
+  exists (a restored session could become valid before any screen
+  navigates). Worth reusing this same pattern once Parent/Staff auth exists.
+
 ## 5. Folder Structure
 
 ```
@@ -72,12 +110,15 @@ lib/
   core/       -- app-wide config, theming, routing setup
   shared/     -- shared widgets used across roles
   features/
+    auth/     -- Choose Role, Login, session state (sits above all 3 roles)
     student/
     parent/
     staff/
 test/
   features/
-    student/
+    auth/
+  core/
+    routing/
 ```
 
 ## 6. Known Bugs From Original Site (Student Spec) — Stance Needed
@@ -110,12 +151,18 @@ of each day = write unit/widget tests for what was just built.** Day 7 shifts fr
 - Skeleton routing: Login → Choose Role → Student Homepage (placeholder screens, real nav)
 - Shared theming (colors, typography, buttons)
 
-**Day 1 — Login + Homepage + shell**
+**Day 1 — Login + Homepage + shell — ✅ DONE**
 - Choose Role screen (Student functional; Parent/Staff visibly disabled/"coming soon")
 - Student Login Form, generic single-bucket error (no field-specific error, per spec)
 - Student Homepage, all 3 entry points wired (Dashboard / Pathway / Nav Grid)
 - Sign out flow
-- Last 1–2 hrs: tests for login validation + routing
+- Tests: login repository + controller + router redirect guard (both directions)
+
+*Actual scope note:* Homepage is 3 clearly-separated entry-point cards, not
+the reference site's fuller single-page layout (dashboard CTA + roadmap +
+8-tile grid all at once) — most of that layout points at the 6 Pathway
+forms, which don't exist until Day 2–6, so building the fuller version now
+would mostly dead-end. Revisit once those forms exist.
 
 **Day 2 — Standalone forms**
 - Student's Profile (decide birth-date bug stance concretely here)
