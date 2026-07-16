@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Design tokens mined from the original web app's `:root` CSS custom
 /// properties (see `day1-trimmed-reference.md`, SECTION 1).
@@ -47,22 +48,75 @@ class AppColors {
   static const redSoft = Color(0xFFF9E4DE);
 }
 
-/// Font family tokens from the CSS `--disp` / `--body` / `--mono` vars.
+/// Font family helpers backed by `google_fonts`, replacing the CSS
+/// `--disp` / `--body` / `--mono` vars.
 ///
-/// NOT WIRED TO REAL FONT FILES YET. The locked dependency list in
-/// PLANNING.md is `flutter_riverpod hive hive_flutter go_router` — no font
-/// package (e.g. google_fonts) and no bundled .ttf assets. Referencing these
-/// family names below will silently fall back to the platform default font
-/// until one of the following happens (flagging this rather than quietly
-/// adding a new dependency myself):
-///   1. Add `google_fonts` as a dependency, or
-///   2. Download the .ttf files and register them under `flutter: fonts:`
-///      in pubspec.yaml.
+/// google_fonts was chosen over manually bundling .ttf files because these
+/// are literally Google Fonts already — the original site's `<head>` pulls
+/// the exact same 3 families from fonts.googleapis.com. See PLANNING.md §4a.
+///
+/// Weight ranges below come from grepping every `--disp`/`--mono` usage in
+/// the trimmed CSS reference (Day 0), not guessed:
+///   --disp (Bricolage Grotesque): 600 / 700 / 800 — headings, card titles,
+///     dashboard stats (`.tpUni`, `.dbig`, `.sesshead .cn`)
+///   --mono (IBM Plex Mono): 400 / 600 / 700 — badges, IDs, step numbers,
+///     "coming soon" tags (`.mstatC`, `.badge`, `.soontag`, `.stp .n`)
+///   --body (Inter): the page-wide default; every element without an
+///     explicit font-family override uses this.
+///
+/// IMPORTANT — release builds must not depend on network font-fetching.
+/// See main.dart for `GoogleFonts.config.allowRuntimeFetching = false` and
+/// the required bundled asset files under `assets/google_fonts/`.
 class AppFonts {
   AppFonts._();
-  static const display = 'Bricolage Grotesque'; // --disp
-  static const body = 'Inter'; // --body
-  static const mono = 'IBM Plex Mono'; // --mono
+
+  static TextStyle display({
+    FontWeight weight = FontWeight.w700,
+    double? fontSize,
+    Color? color,
+    double? height,
+    double? letterSpacing,
+  }) {
+    return GoogleFonts.bricolageGrotesque(
+      fontWeight: weight,
+      fontSize: fontSize,
+      color: color,
+      height: height,
+      letterSpacing: letterSpacing,
+    );
+  }
+
+  static TextStyle body({
+    FontWeight weight = FontWeight.w400,
+    double? fontSize,
+    Color? color,
+    double? height,
+    double? letterSpacing,
+  }) {
+    return GoogleFonts.inter(
+      fontWeight: weight,
+      fontSize: fontSize,
+      color: color,
+      height: height,
+      letterSpacing: letterSpacing,
+    );
+  }
+
+  static TextStyle mono({
+    FontWeight weight = FontWeight.w400,
+    double? fontSize,
+    Color? color,
+    double? height,
+    double? letterSpacing,
+  }) {
+    return GoogleFonts.ibmPlexMono(
+      fontWeight: weight,
+      fontSize: fontSize,
+      color: color,
+      height: height,
+      letterSpacing: letterSpacing,
+    );
+  }
 }
 
 ThemeData buildStudentTheme() {
@@ -76,29 +130,23 @@ ThemeData buildStudentTheme() {
     surface: AppColors.surface,
   );
 
+  // Inter as the base for every default text style (matches the CSS's
+  // page-wide `body{font-family:var(--body)}` rule), with the specific
+  // heading slots swapped to Bricolage Grotesque below.
+  final baseTextTheme = GoogleFonts.interTextTheme();
+
   return ThemeData(
     useMaterial3: true,
     colorScheme: colorScheme,
     scaffoldBackgroundColor: AppColors.bg,
-    fontFamily: AppFonts.body,
-    textTheme: const TextTheme(
-      displaySmall: TextStyle(
-        fontFamily: AppFonts.display,
-        fontWeight: FontWeight.w700,
+    textTheme: baseTextTheme.copyWith(
+      displaySmall: AppFonts.display(
+        weight: FontWeight.w700,
         fontSize: 22,
         color: AppColors.ink,
       ),
-      bodyMedium: TextStyle(
-        fontFamily: AppFonts.body,
-        fontSize: 14,
-        color: AppColors.ink,
-        height: 1.5,
-      ),
-      bodySmall: TextStyle(
-        fontFamily: AppFonts.body,
-        fontSize: 13,
-        color: AppColors.muted,
-      ),
+      bodyMedium: AppFonts.body(fontSize: 14, color: AppColors.ink, height: 1.5),
+      bodySmall: AppFonts.body(fontSize: 13, color: AppColors.muted),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -121,10 +169,10 @@ ThemeData buildStudentTheme() {
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.teal,
         foregroundColor: Colors.white,
-        disabledBackgroundColor: AppColors.muted.withOpacity(0.35),
+        disabledBackgroundColor: AppColors.muted.withValues(alpha: 0.35),
         padding: const EdgeInsets.symmetric(vertical: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+        textStyle: AppFonts.body(weight: FontWeight.w700, fontSize: 14),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
- 
+
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -124,12 +124,13 @@ class _RoleButton extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: AppColors.line),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Coming soon',
-                      style: TextStyle(
+                      style: AppFonts.mono(
+                        weight: FontWeight.w700,
                         fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
                         color: AppColors.muted,
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ),
