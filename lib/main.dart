@@ -4,15 +4,20 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'core/persistence/hive_registrar.dart';
 import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
 
-/// NOTE: provided as an integration reference for Day 1's new pieces
-/// (router + theme + auth). If Day 0 already created a main.dart in your
-/// project, merge this in rather than overwriting it wholesale — in
-/// particular, preserve any Hive.initFlutter()/adapter registration you
-/// already added there, since that needs to run before runApp() too.
-void main() {
+/// Day 2 Step 0 fix: this used to be a sync `void main()` with a comment
+/// hinting Hive init "should" happen here but never actually calling it —
+/// see day2-codebase-reference.md's CRITICAL GAP note. `main()` is now
+/// `async` so `initHive()` (which awaits `Hive.initFlutter()` and every
+/// box-open call) can run to completion before `runApp()`, since Student's
+/// Profile / My Tests / My Grades all depend on their boxes already being
+/// open by the time their screens build.
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   // Release builds must not depend on fetching fonts over the network —
   // require the bundled .ttf assets (see README for the exact files/
   // weights needed) to actually be present. If a weight is requested that
@@ -35,6 +40,8 @@ void main() {
       yield LicenseEntryWithLineBreaks([entry.key], license);
     }
   });
+
+  await initHive();
 
   runApp(const ProviderScope(child: RunataPathwayApp()));
 }
