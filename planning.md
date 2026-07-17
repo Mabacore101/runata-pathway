@@ -53,7 +53,7 @@ not something extra dev hours alone can produce.
 | Decision | Choice | Why |
 |---|---|---|
 | State management | **Riverpod** | Better testability than Provider, less ceremony than Bloc for a form-heavy app |
-| Local storage | **Hive** (over sqflite) | Data is mostly flexible objects/lists (test rows, portfolio entries, tabbed grades), not relational — Hive skips schema/migration overhead |
+| Local storage | **Hive CE** (over sqflite) | Data is mostly flexible objects/lists (test rows, portfolio entries, tabbed grades), not relational — Hive skips schema/migration overhead. Swapped from original `hive` to `hive_ce` on Day 2 (see dependency note below) |
 | Backend | **Local-only for now** | No Supabase credentials on hand yet; original site's own Supabase script tag is optional/degrades to offline, so this mirrors that default |
 | Routing | **go_router** | Standard modern Flutter routing choice |
 | Testing | `flutter_test` + `mocktail` + `hive_ce_test` | Traditional test-after-code flow, not TDD |
@@ -150,15 +150,42 @@ These exist in the current live site's behavior. Default stance below unless ove
       student instead of silently failing to save. Deviation from the doc's default
       "replicate for now" stance — noted here explicitly so it isn't mistaken for
       an inconsistency later.
-- [ ] Grade score input allows values outside 1–100 clamp (breaks average calculation) —
-      relevant to Day 2's My Grades. Replicate: spinner enforces range, direct text
-      entry bypasses it (matches original site behavior).
+- [x] Grade score input allows values outside 1–100 clamp (breaks average calculation)
+      — **DECIDED (Day 2): partially replicated, not a full 1:1 copy.** Upper-bound
+      bypass (>100 breaks the average) is faithfully replicated, exactly as the
+      original site does it — the averaging function is deliberately unclamped.
+      Lower bound is a genuine deviation: negative scores are blocked structurally
+      at the input level (digit-only input formatter, no minus sign possible),
+      since the flow spec's own "even if >100 or <0" wording aside, there's no
+      real-world scenario where a negative grade is meaningful. Both the
+      replicated and the deviating half are covered by tests.
 - [ ] Clubs auto-fill from anchor major is broken — relevant to Day 4.
 - [ ] "Mark as Ready" on essay/application sections can be bypassed without meeting
       criteria — relevant to Day 6.
 
 *(Confirm/adjust this list against the full behavioral spec doc before Day 5–6 work,
 since two of these live in Application Materials.)*
+
+## 6a. Scope Addition Found During Day 2 (approved, not silently accepted)
+
+Neither the field/datatype doc nor the behavioral spec mentioned that Student's
+Profile's Parent/Guardian section is **repeatable** — that only surfaced from
+reading the live site's actual JS (`day2-trimmed-source.md`'s `renderProfile()`):
+`P.parents` is an array with an "+ Add another parent/guardian" button and a
+per-entry delete button (hidden when only one entry remains). The JS also has a
+per-parent `address` field neither doc listed.
+
+**Approved as real scope, not an oversight to roll back:** built as
+`List<ParentGuardianEntry>`, always seeded with one blank entry, matching the
+live site's actual behavior. Hive field-index safety was handled carefully
+(old flat parentName/Phone/Email/AvailableTime indices permanently retired
+rather than reused, new list field given a fresh index) since real Hive data
+had already been written under the old shape before this was caught.
+Round-trip and ordering covered by tests.
+
+This is exactly the kind of gap the Day 1/Day 2 trimmed JS references exist to
+catch — worth remembering for Days 3–6, where the same "doc says X, live JS
+does X+1" pattern may repeat.
 
 ## 7. Development Rhythm
 
@@ -208,47 +235,38 @@ the reference site's fuller single-page layout (dashboard CTA + roadmap +
 forms, which don't exist until Day 2–6, so building the fuller version now
 would mostly dead-end. Revisit once those forms exist.
 
-**Day 2 — Standalone forms — 🔜 IN PROGRESS (Step 0 done, forms next)**
-- [x] **STEP 0 — Fix the Day 0 gap — DONE, verified.** `hive_ce` wired up,
-      3 models built (Profile/Tests/Grades) with generated adapters,
-      `initHive()` called before `runApp()`, round-trip tests passing,
-      zero regression to existing Day 1 code (router/theme/auth confirmed
-      byte-for-byte unchanged).
-- [x] Birth-date bug stance decided (see Section 6): fixed, not replicated —
-      invalid date shows a direct warning instead of failing silently
-- [ ] Student's Profile — single form, all fields optional (per spec,
-      nothing is required), with one exception to the "no validation"
-      default:
-      - General info: Date of birth (date picker) — field itself stays
-        optional, but if a date IS entered and it's invalid, show a clear
-        visible warning to the student rather than silently failing to
-        save (this is the one deliberate fix vs. the original site, see
-        Section 6)
-      - Phone Number, Address
-      - Parent/Guardian: Name, Phone, Email, Available time
-      - Siblings (textarea)
-      - Medical: Allergies, Regular medicine, Hospital (all textarea)
-      - Transportation: how student gets to/from school
-      - Emergency contact
-      - Persist to Hive
-- [ ] My Tests — repeatable rows:
-      - Target (text), Latest (text), Status (dropdown: Planned/Registered/
-        Taken, defaults to Planned), Date (text)
-      - Duplicate-blocking logic for test types — confirm the exact dedup
-        condition against the behavioral spec before implementing, don't
-        assume
-- [ ] My Grades:
-      - 6 semester tabs
-      - Fixed subject list + custom subjects addable by student
-      - Score input: Number, spec range 1–100; replicate the clamp-bypass
-        bug (spinner enforces range, direct text entry doesn't)
-      - Average calculation must reflect the bug's actual impact (an
-        out-of-range manually-typed score should visibly skew the average,
-        not be silently clamped)
-- [ ] Last 1–2 hrs: unit tests
-      - Grade average calculation — include an explicit test case for the
-        out-of-range/bug scenario, not just the happy path
-      - Test-type duplicate-blocking rule
+**Day 2 — Standalone forms — ✅ DONE**
+- [x] **STEP 0 — Fix the Day 0 gap.** `hive_ce` wired up, 3 models built
+      (Profile/Tests/Grades) with generated adapters, `initHive()` called
+      before `runApp()`, round-trip tests passing, zero regression to
+      existing Day 1 code (router/theme/auth confirmed byte-for-byte
+      unchanged).
+- [x] Birth-date bug stance: fixed, not replicated — invalid date shows a
+      direct warning (via `dateOfBirthWarning`/`errorText`) instead of
+      failing silently. Parser explicitly guards against Dart's silent
+      date-rollover behavior (e.g. `DateTime(2026, 2, 30)` quietly becoming
+      March 2nd), so a truly invalid date can't slip through disguised as
+      a valid one.
+- [x] Student's Profile — all field/datatype-doc fields built, all
+      optional, persisted to Hive. Parent/Guardian built as a genuinely
+      repeatable list (see Section 6a) rather than 4 flat fields, matching
+      the live site's actual behavior once that was discovered.
+- [x] My Tests — repeatable rows (Target/Latest/Status/Date), duplicate-
+      blocking enforced at both the controller and UI layer, with AP/Other
+      correctly exempted per the flow spec.
+- [x] My Grades — 6 semester tabs, fixed curriculum (ported from the live
+      site's actual `CURRICULUM` JS object, since neither doc named the
+      real subjects) + custom subjects, Science/Social track toggle
+      (defaults to social pending Day 3's anchor-major auto-inference).
+      Score bug handled as a deliberate partial-replication (see Section
+      6): upper-bound bypass faithfully kept, lower bound blocked at the
+      input-formatter level.
+- [x] Tests — extensive: date-parsing edge cases, Hive round-trips for all
+      3 models, duplicate-rule coverage from both sides, the exact bug
+      scenarios named above, plus widget-level tests for all 3 screens
+      (`profile_screen_test.dart`, `tests_screen_test.dart`,
+      `grades_screen_test.dart` — the first two were a follow-up fix after
+      an initial pass only covered Grades at the widget level).
 
 **Day 3 — Target Universities (heaviest single-form logic — full day)**
 - Explore Majors (multi-select 1–6, mark-top 1–3, anchor gating)
