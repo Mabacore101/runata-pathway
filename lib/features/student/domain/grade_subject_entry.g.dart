@@ -1,65 +1,14 @@
-// GENERATED CODE (hand-authored stand-in — see chat notes)
-//
-// Mirrors what
-//   dart run build_runner build --delete-conflicting-outputs
-// produces from the @HiveType/@HiveField annotations in
-// grade_subject_entry.dart. Regenerate locally once to get the
-// authoritative version.
+// GENERATED CODE - DO NOT MODIFY BY HAND
 
 part of 'grade_subject_entry.dart';
 
-class GradeSubjectGroupAdapter extends TypeAdapter<GradeSubjectGroup> {
-  @override
-  final int typeId = 5;
-
-  @override
-  GradeSubjectGroup read(BinaryReader reader) {
-    switch (reader.readByte()) {
-      case 0:
-        return GradeSubjectGroup.coreEssentials;
-      case 1:
-        return GradeSubjectGroup.coreSubjects;
-      case 2:
-        return GradeSubjectGroup.coreGeneral;
-      case 3:
-        return GradeSubjectGroup.other;
-      default:
-        return GradeSubjectGroup.coreEssentials;
-    }
-  }
-
-  @override
-  void write(BinaryWriter writer, GradeSubjectGroup obj) {
-    switch (obj) {
-      case GradeSubjectGroup.coreEssentials:
-        writer.writeByte(0);
-        break;
-      case GradeSubjectGroup.coreSubjects:
-        writer.writeByte(1);
-        break;
-      case GradeSubjectGroup.coreGeneral:
-        writer.writeByte(2);
-        break;
-      case GradeSubjectGroup.other:
-        writer.writeByte(3);
-        break;
-    }
-  }
-
-  @override
-  int get hashCode => typeId.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is GradeSubjectGroupAdapter &&
-          runtimeType == other.runtimeType &&
-          typeId == other.typeId;
-}
+// **************************************************************************
+// TypeAdapterGenerator
+// **************************************************************************
 
 class GradeSubjectEntryAdapter extends TypeAdapter<GradeSubjectEntry> {
   @override
-  final int typeId = 4;
+  final typeId = 4;
 
   @override
   GradeSubjectEntry read(BinaryReader reader) {
@@ -71,9 +20,9 @@ class GradeSubjectEntryAdapter extends TypeAdapter<GradeSubjectEntry> {
       id: fields[0] as String,
       semesterCode: fields[1] as String,
       name: fields[2] as String,
-      score: fields[3] as double?,
+      score: (fields[3] as num?)?.toDouble(),
       group: fields[4] as GradeSubjectGroup,
-      isCustom: fields[5] as bool,
+      isCustom: fields[5] == null ? false : fields[5] as bool,
     );
   }
 
@@ -102,6 +51,51 @@ class GradeSubjectEntryAdapter extends TypeAdapter<GradeSubjectEntry> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is GradeSubjectEntryAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class GradeSubjectGroupAdapter extends TypeAdapter<GradeSubjectGroup> {
+  @override
+  final typeId = 5;
+
+  @override
+  GradeSubjectGroup read(BinaryReader reader) {
+    switch (reader.readByte()) {
+      case 0:
+        return GradeSubjectGroup.coreEssentials;
+      case 1:
+        return GradeSubjectGroup.coreSubjects;
+      case 2:
+        return GradeSubjectGroup.coreGeneral;
+      case 3:
+        return GradeSubjectGroup.other;
+      default:
+        return GradeSubjectGroup.coreEssentials;
+    }
+  }
+
+  @override
+  void write(BinaryWriter writer, GradeSubjectGroup obj) {
+    switch (obj) {
+      case GradeSubjectGroup.coreEssentials:
+        writer.writeByte(0);
+      case GradeSubjectGroup.coreSubjects:
+        writer.writeByte(1);
+      case GradeSubjectGroup.coreGeneral:
+        writer.writeByte(2);
+      case GradeSubjectGroup.other:
+        writer.writeByte(3);
+    }
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GradeSubjectGroupAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

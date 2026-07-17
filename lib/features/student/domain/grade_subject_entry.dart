@@ -5,14 +5,14 @@ part 'grade_subject_entry.g.dart';
 /// Which of My Grades' fixed groups a subject belongs to, or [other] for
 /// student-added custom subjects.
 ///
-/// ⚠️ ASSUMPTION FLAGGED, NOT GUESSED PAST: both the field/datatype doc
-/// and the flow spec name the three fixed group HEADERS (Core Essentials
-/// / Core Subjects / Core General) as always-visible, but neither
-/// document lists which actual subjects live inside each group. This enum
-/// only fixes the group names; the specific subject list that seeds each
-/// group is intentionally left as an open item for whoever builds the My
-/// Grades screen itself (Day 2, later step) — don't invent subject names
-/// here without confirming them against the live site or client first.
+/// The field/datatype doc and behavioral spec only ever named the three
+/// fixed group HEADERS (Core Essentials / Core Subjects / Core General),
+/// never the actual subjects inside each — this enum was left
+/// deliberately open on that point at Step 0. The real subject lists have
+/// since been sourced from the site JS itself (`day2-trimmed-source.md`'s
+/// `CURRICULUM` object) and live in `curriculum.dart`, not here — this
+/// enum still only fixes the group NAMES; `Curriculum.subjectGroupsFor()`
+/// is the source of truth for which subjects populate each one.
 @HiveType(typeId: 5)
 enum GradeSubjectGroup {
   @HiveField(0)
