@@ -2,6 +2,7 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 
 import '../../hive_registrar.g.dart';
 import '../../features/student/domain/grade_subject_entry.dart';
+import '../../features/student/domain/student_grades_settings.dart';
 import '../../features/student/domain/student_profile.dart';
 import '../../features/student/domain/test_entry.dart';
 import 'hive_boxes.dart';
@@ -22,8 +23,7 @@ import 'hive_boxes.dart';
 /// file is checked into version control per Hive CE's own convention —
 /// it's NOT hand-maintained, don't edit it directly). The generator scans
 /// the whole `lib/` tree for `@HiveType`-annotated classes, so a new model
-/// added in Day 3+ (Target Universities / My Clubs / Application
-/// Materials) gets picked up automatically the next time
+/// added later gets picked up automatically the next time
 /// `dart run build_runner build` runs — nobody has to remember to add a
 /// line here by hand. This closes off the exact failure mode that created
 /// the original Day 0 gap: a step that was "supposed to happen" but
@@ -33,7 +33,8 @@ import 'hive_boxes.dart';
 /// assigns them anymore — `hive_ce_generator` reads them straight off each
 /// model's `@HiveType(typeId: N)` annotation. Reserved so far:
 /// 0 StudentProfile, 1 TestEntry, 2 TestType, 3 TestStatus,
-/// 4 GradeSubjectEntry, 5 GradeSubjectGroup. Next free id is **6**.
+/// 4 GradeSubjectEntry, 5 GradeSubjectGroup, 6 ParentGuardianEntry,
+/// 7 GradeTrack, 8 StudentGradesSettings. Next free id is **9**.
 Future<void> initHive() async {
   await Hive.initFlutter();
   Hive.registerAdapters();
@@ -42,5 +43,6 @@ Future<void> initHive() async {
     Hive.openBox<StudentProfile>(HiveBoxes.studentProfile),
     Hive.openBox<TestEntry>(HiveBoxes.studentTests),
     Hive.openBox<GradeSubjectEntry>(HiveBoxes.studentGrades),
+    Hive.openBox<StudentGradesSettings>(HiveBoxes.studentGradesSettings),
   ]);
 }
