@@ -206,6 +206,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 12),
             TextField(
+              key: const Key('profile_dob_field'),
               controller: _dobController,
               keyboardType: TextInputType.datetime,
               decoration: InputDecoration(
@@ -243,6 +244,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(height: 8),
             for (var i = 0; i < _parentBlocks.length; i++) ...[
               _ParentBlockCard(
+                key: Key('parent_block_$i'),
                 index: i,
                 controllers: _parentBlocks[i],
                 canRemove: _parentBlocks.length > 1,
@@ -251,6 +253,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               const SizedBox(height: 12),
             ],
             OutlinedButton(
+              key: const Key('add_parent_button'),
               onPressed: _addParentBlock,
               child: const Text('+ Add another parent / guardian'),
             ),
@@ -327,6 +330,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton(
+                    key: const Key('profile_save_button'),
                     onPressed: state.isSaving ? null : _handleSave,
                     child: state.isSaving
                         ? const SizedBox(
@@ -358,6 +362,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
 class _ParentBlockCard extends StatelessWidget {
   const _ParentBlockCard({
+    super.key,
     required this.index,
     required this.controllers,
     required this.canRemove,
@@ -395,6 +400,7 @@ class _ParentBlockCard extends StatelessWidget {
               ),
               if (canRemove)
                 IconButton(
+                  key: Key('parent_delete_$index'),
                   icon: const Icon(Icons.close, size: 18),
                   tooltip: 'Remove',
                   onPressed: onRemove,

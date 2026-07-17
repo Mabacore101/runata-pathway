@@ -165,6 +165,7 @@ class _TestsScreenState extends ConsumerState<TestsScreen> {
               children: [
                 for (final type in _availableTypeButtons)
                   OutlinedButton(
+                    key: Key('add_test_${type.name}'),
                     onPressed: () => _addTest(type),
                     child: Text('+ ${_testTypeLabel(type)}'),
                   ),
@@ -233,6 +234,7 @@ class _TestRowCardState extends State<_TestRowCard> {
                 ),
               ),
               IconButton(
+                key: Key('delete_test_${c.id}'),
                 icon: const Icon(Icons.close, size: 18),
                 tooltip: 'Delete',
                 onPressed: widget.onDelete,
