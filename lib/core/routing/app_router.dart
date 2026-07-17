@@ -7,6 +7,7 @@ import '../../features/auth/application/auth_state.dart';
 import '../../features/auth/presentation/choose_role_screen.dart';
 import '../../features/auth/presentation/student_login_screen.dart';
 import '../../features/student/presentation/profile_screen.dart';
+import '../../features/student/presentation/grades_screen.dart';
 import '../../features/student/presentation/student_home_screen.dart';
 import '../../features/student/presentation/stub_screens.dart';
 import '../../features/student/presentation/tests_screen.dart';
@@ -22,6 +23,7 @@ class AppRoutes {
   static const studentNavGrid = '/student/nav-grid';
   static const studentProfile = '/student/profile';
   static const studentTests = '/student/tests';
+  static const studentGrades = '/student/grades';
 }
 
 /// Bridges auth-state changes into go_router's `refreshListenable`.
@@ -96,6 +98,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.studentTests,
         builder: (context, state) => const TestsScreen(),
       ),
+      GoRoute(
+        path: AppRoutes.studentGrades,
+        builder: (context, state) => const GradesScreen(),
+      ),
     ],
     redirect: (context, state) {
       final isSignedIn = ref.read(authControllerProvider).isSignedIn;
@@ -106,7 +112,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           target == AppRoutes.studentPathway ||
           target == AppRoutes.studentNavGrid ||
           target == AppRoutes.studentProfile ||
-          target == AppRoutes.studentTests;
+          target == AppRoutes.studentTests ||
+          target == AppRoutes.studentGrades;
 
       // Both "public-only" screens (Choose Role and the Login form itself)
       // should be skipped once a session already exists — not just Login.
