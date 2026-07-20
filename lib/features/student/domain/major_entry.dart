@@ -14,12 +14,13 @@ part 'major_entry.g.dart';
 /// like the original.
 ///
 /// `country` defaults to `'United States'` on add (`data-maddm` handler:
-/// `{m:..., country:"United States", top:false, anchor:false}`) and has
-/// no editing UI anywhere in the trimmed source's `majorPickerHTML()` or
-/// click-handler block — it exists on the data shape (and is read later
-/// by Find Universities' anchor auto-fill: `if(am&&am.country...)`) but
-/// isn't student-editable today. Kept here for shape parity; only add a
-/// picker if a later day's source reveals one.
+/// `{m:..., country:"United States", top:false, anchor:false}`) and is
+/// read by Find Universities' anchor auto-fill (`if(am&&am.country...)`).
+/// Now student-editable via a picker on Explore Majors — the trimmed
+/// source's `majorPickerHTML()` excerpt didn't show that picker's markup,
+/// but the same excerpt's own description text ("Add up to 6 majors with
+/// a target country...") already promised it, so this closes a real gap
+/// rather than adding something the original never intended.
 @HiveType(typeId: 9)
 class MajorEntry {
   MajorEntry({

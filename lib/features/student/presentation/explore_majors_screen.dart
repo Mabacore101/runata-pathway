@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../application/majors_controller.dart';
 import '../domain/major_entry.dart';
 import '../domain/majors_catalog.dart';
+import '../domain/university_catalog.dart' show uniCountries;
 
 /// Explore Majors — Target Universities tab 1. Every action here saves
 /// immediately (see majors_controller.dart) — no separate Save button.
@@ -101,6 +102,7 @@ class ExploreMajorsScreen extends ConsumerWidget {
                 }
               },
               onSetAnchor: () => controller.setAnchor(i),
+              onSetCountry: (country) => controller.setCountry(i, country),
               onRemove: () => controller.removeMajor(i),
             ),
             const SizedBox(height: 10),
@@ -219,6 +221,7 @@ class _MajorRow extends StatelessWidget {
     required this.description,
     required this.onToggleTop,
     required this.onSetAnchor,
+    required this.onSetCountry,
     required this.onRemove,
   });
 
@@ -226,6 +229,7 @@ class _MajorRow extends StatelessWidget {
   final String description;
   final VoidCallback onToggleTop;
   final VoidCallback onSetAnchor;
+  final ValueChanged<String> onSetCountry;
   final VoidCallback onRemove;
 
   @override
@@ -271,6 +275,36 @@ class _MajorRow extends StatelessWidget {
                 child: Text(entry.anchor ? '● Anchor' : 'Anchor'),
               ),
               IconButton(icon: const Icon(Icons.close, size: 16), onPressed: onRemove),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Text(
+                'Target country: ',
+                style: AppFonts.body(fontSize: 11.5, color: AppColors.inkSoft),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.line),
+                  borderRadius: BorderRadius.circular(8),
+                  color: AppColors.surface,
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: entry.country,
+                    isDense: true,
+                    style: AppFonts.body(fontSize: 11.5, color: AppColors.ink),
+                    items: [
+                      for (final c in uniCountries) DropdownMenuItem(value: c, child: Text(c)),
+                    ],
+                    onChanged: (c) {
+                      if (c != null) onSetCountry(c);
+                    },
+                  ),
+                ),
+              ),
             ],
           ),
           if (description.isNotEmpty)

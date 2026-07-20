@@ -95,6 +95,28 @@ class MajorsController extends Notifier<StudentMajorsSettings> {
     await _persist(StudentMajorsSettings(majors: majors));
   }
 
+  /// Sets a major's target country — drives Find Universities' country
+  /// auto-fill for the anchor major (day3-trimmed-source.md's "Read this
+  /// first" note). No cascade needed on the shortlist side: a
+  /// [UniversityTarget] row is independent, flat data keyed by its own
+  /// id — changing a major's preferred country here only affects what
+  /// Find Universities suggests by DEFAULT when you switch to that major;
+  /// it doesn't touch or orphan any university already shortlisted for
+  /// this major under a different country (the per-major cap is global
+  /// across countries too, matching the JS's `t.major===uMajor` check,
+  /// which never filters by country).
+  Future<void> setCountry(int index, String country) async {
+    final entry = state.majors[index];
+    final majors = [...state.majors];
+    majors[index] = MajorEntry(
+      major: entry.major,
+      country: country,
+      top: entry.top,
+      anchor: entry.anchor,
+    );
+    await _persist(StudentMajorsSettings(majors: majors));
+  }
+
   Future<void> _persist(StudentMajorsSettings updated) async {
     await _repository.saveSettings(updated);
     state = updated;
