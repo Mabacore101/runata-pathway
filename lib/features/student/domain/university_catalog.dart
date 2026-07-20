@@ -526,6 +526,20 @@ const List<ExtraUniversity> extraUniversities = [
   ExtraUniversity('HELP University', 'Malaysia'),
 ];
 
+/// Finds the curated catalog entry for [name] in [country], if any.
+///
+/// A shortlist row ([UniversityTarget]) only stores the university's NAME
+/// and country — not a live reference to its catalog entry — so My
+/// Shortlist needs this to show real requirements/IELTS for a
+/// previously-added target. Returns null for a custom (student-typed)
+/// university that isn't in the curated catalog at all.
+UniversityEntry? findUniversityEntry(String country, String name) {
+  for (final u in universitiesByCountry[country] ?? const []) {
+    if (u.name == name) return u;
+  }
+  return null;
+}
+
 /// Every known university name for [country] — the curated cards PLUS the
 /// extra autocomplete-only names, deduped and sorted. Mirrors JS's
 /// `catalogFor(country)`, which draws from a combined name catalog for the

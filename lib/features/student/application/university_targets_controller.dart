@@ -84,4 +84,35 @@ class UniversityTargetsController extends Notifier<List<UniversityTarget>> {
     await _repository.delete(match.id);
     state = state.where((t) => t.id != match!.id).toList();
   }
+
+  /// My Shortlist's per-target notes field. Mirrors the JS's `data-tnote`
+  /// handler in spirit (free text, one field per row) but NOT in timing —
+  /// the JS mutates `U.targets[i].note` on every keystroke with no
+  /// explicit save step, since it's a live in-memory object reference.
+  /// This is a real persisted Hive write, so the SCREEN (not this method)
+  /// is what decides when to call it — on focus-loss, not per keystroke —
+  /// to avoid a real disk write on every character typed. This method
+  /// itself just does the write + state update; it doesn't know or care
+  /// when it was called.
+  Future<void> updateNote(String id, String note) async {
+    UniversityTarget? match;
+    for (final t in state) {
+      if (t.id == id) {
+        match = t;
+        break;
+      }
+    }
+    if (match == null) return;
+
+    final updated = UniversityTarget(
+      id: match.id,
+      major: match.major,
+      country: match.country,
+      university: match.university,
+      custom: match.custom,
+      note: note,
+    );
+    await _repository.upsert(updated);
+    state = [for (final t in state) if (t.id == id) updated else t];
+  }
 }

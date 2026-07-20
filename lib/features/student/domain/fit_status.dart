@@ -1,3 +1,4 @@
+import 'test_entry.dart';
 import 'university_catalog.dart';
 
 /// Which of the 4 visual tiers a fit result falls into — maps 1:1 to the
@@ -35,4 +36,19 @@ FitStatus fitStatusFor(UniversityEntry uni, double? studentIelts) {
   if (gap <= 0) return const FitStatus(label: 'Met', tier: FitTier.met);
   if (gap <= 0.5) return const FitStatus(label: 'On track', tier: FitTier.track);
   return const FitStatus(label: 'Needs work', tier: FitTier.work);
+}
+
+/// Mirrors the JS's `sc.ielts` — pulled from the student's actual My
+/// Tests IELTS row rather than a separate stored score. Returns null if
+/// no IELTS row exists, or its `latest` text doesn't parse as a number
+/// (matches JS's `isNaN(parseFloat(sc.ielts))` guard). Shared by Find
+/// Universities and My Shortlist, since both show the same fit chip for
+/// the same underlying reason.
+double? studentIeltsScore(List<TestEntry> entries) {
+  for (final t in entries) {
+    if (t.type == TestType.ielts) {
+      return t.latest != null ? double.tryParse(t.latest!) : null;
+    }
+  }
+  return null;
 }
