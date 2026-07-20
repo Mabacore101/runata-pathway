@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
 import 'explore_majors_screen.dart';
+import 'find_universities_screen.dart';
 
 /// Target Universities — hosts Explore Majors / Find Universities / My
 /// Shortlist as TABS in one screen, mirroring the original site's single
 /// `renderUniPath()` function rather than 3 separate pages
-/// (day3-trimmed-source.md). Built incrementally: Explore Majors is real;
-/// Find Universities is next up (currently a placeholder tab below); My
-/// Shortlist comes after that.
+/// (day3-trimmed-source.md). Built incrementally: Explore Majors and Find
+/// Universities are both real now; My Shortlist joins as tab 3 next.
 ///
 /// Tab index is ephemeral UI state only (`DefaultTabController`) — not
 /// persisted, and switching tabs doesn't touch any Riverpod state. Each
@@ -44,27 +43,14 @@ class TargetUniversitiesScreen extends StatelessWidget {
                   ExploreMajorsScreen(
                     onContinue: () => tabController.animateTo(1),
                   ),
-                  const _FindUniversitiesPlaceholder(),
+                  FindUniversitiesScreen(
+                    onGoToExploreMajors: () => tabController.animateTo(0),
+                  ),
                 ],
               );
             },
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// TEMPORARY — replaced by the real Find Universities tab content next.
-class _FindUniversitiesPlaceholder extends StatelessWidget {
-  const _FindUniversitiesPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        'Find Universities — coming next',
-        style: AppFonts.body(color: AppColors.muted),
       ),
     );
   }
