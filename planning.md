@@ -270,7 +270,11 @@ would mostly dead-end. Revisit once those forms exist.
 
 **Day 3 — Target Universities (heaviest single-form logic — full day)**
 - Explore Majors (multi-select 1–6, mark-top 1–3, anchor gating)
-- Find Universities (gated on Top-marked majors, shared shortlist cap)
+- Find Universities (gated on Top-marked majors, **per-major** shortlist cap of 3
+  — corrected from earlier "shared" wording after direct source inspection found
+  the cap is `targets.filter(major===current).length>=3`, keyed per major, not
+  one pooled limit across all majors — see day3-trimmed-source.md §"Read this
+  first")
 - My Shortlist (empty state, edit notes, delete, ANCHOR/YOURS tags)
 - Delete-a-major cascade logic — budget real time here, trickiest state in the app
 - Last 1–2 hrs: unit tests for anchor-clear cascade, shortlist cap enforcement
