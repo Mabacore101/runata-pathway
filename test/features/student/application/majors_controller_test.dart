@@ -204,6 +204,57 @@ void main() {
       });
     });
 
+    group('setCountry', () {
+      test('changes the entry\'s country field', () async {
+        final box = await Hive.openBox<StudentMajorsSettings>(
+            'majors_ctrl_country_set');
+        container = buildContainer(box);
+        final notifier = container.read(majorsControllerProvider.notifier);
+
+        await notifier.addMajor('A');
+        expect(container.read(majorsControllerProvider).majors.single.country,
+            'United States');
+
+        await notifier.setCountry(0, 'Indonesia');
+
+        expect(container.read(majorsControllerProvider).majors.single.country,
+            'Indonesia');
+      });
+
+      test('does not affect top/anchor flags on the same entry', () async {
+        final box = await Hive.openBox<StudentMajorsSettings>(
+            'majors_ctrl_country_preserves_flags');
+        container = buildContainer(box);
+        final notifier = container.read(majorsControllerProvider.notifier);
+
+        await notifier.addMajor('A');
+        await notifier.toggleTop(0);
+        await notifier.setAnchor(0);
+
+        await notifier.setCountry(0, 'Australia');
+
+        final entry = container.read(majorsControllerProvider).majors.single;
+        expect(entry.top, isTrue);
+        expect(entry.anchor, isTrue);
+        expect(entry.country, 'Australia');
+      });
+
+      test('persists across a rebuilt controller', () async {
+        final box = await Hive.openBox<StudentMajorsSettings>(
+            'majors_ctrl_country_persist');
+        container = buildContainer(box);
+        final notifier = container.read(majorsControllerProvider.notifier);
+        await notifier.addMajor('A');
+        await notifier.setCountry(0, 'China');
+
+        final rebuilt = buildContainer(box);
+        addTearDown(rebuilt.dispose);
+
+        expect(rebuilt.read(majorsControllerProvider).majors.single.country,
+            'China');
+      });
+    });
+
     group('setAnchor', () {
       test('sets anchor on a top-marked entry', () async {
         final box = await Hive.openBox<StudentMajorsSettings>(

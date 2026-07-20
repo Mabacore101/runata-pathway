@@ -123,6 +123,22 @@ void main() {
     expect(find.text('Computer Science'), findsWidgets);
   });
 
+  testWidgets('new majors default to United States, and the dropdown can change it',
+      (tester) async {
+    await tester.pumpWidget(await harness(tester, 'majors_screen_country'));
+    await tapAndSettle(tester, find.text('+ Computer Science'));
+
+    expect(find.text('United States'), findsOneWidget);
+
+    await tester.tap(find.byType(DropdownButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Indonesia'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Indonesia'), findsOneWidget);
+    expect(find.text('United States'), findsNothing);
+  });
+
   testWidgets('anchor button is disabled until the major is Top-marked',
       (tester) async {
     await tester.pumpWidget(
