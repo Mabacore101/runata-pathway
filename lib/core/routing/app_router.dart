@@ -6,11 +6,11 @@ import '../../features/auth/application/auth_controller.dart';
 import '../../features/auth/application/auth_state.dart';
 import '../../features/auth/presentation/choose_role_screen.dart';
 import '../../features/auth/presentation/student_login_screen.dart';
-import '../../features/student/presentation/explore_majors_screen.dart';
 import '../../features/student/presentation/profile_screen.dart';
 import '../../features/student/presentation/grades_screen.dart';
 import '../../features/student/presentation/student_home_screen.dart';
 import '../../features/student/presentation/stub_screens.dart';
+import '../../features/student/presentation/target_universities_screen.dart';
 import '../../features/student/presentation/tests_screen.dart';
 
 /// Route paths, named here so screens/tests never hardcode raw strings.
@@ -26,15 +26,13 @@ class AppRoutes {
   static const studentTests = '/student/tests';
   static const studentGrades = '/student/grades';
 
-  /// Explore Majors — Target Universities tab 1 (Day 3, in progress).
-  /// Routed on its own for now, same "preview" treatment
-  /// studentPathway's stub gives Profile/Tests/Grades — once Find
-  /// Universities + My Shortlist exist, day3-trimmed-source.md's
-  /// evidence that the original site treats all 3 as ONE screen with
-  /// internal tab-switching (`renderUniPath()`), not 3 separate pages,
-  /// is worth revisiting before this becomes 3 permanent separate
-  /// routes instead of 1 route with tab state.
-  static const studentExploreMajors = '/student/explore-majors';
+  /// Target Universities — hosts Explore Majors / Find Universities / My
+  /// Shortlist as tabs on ONE screen (see target_universities_screen.dart),
+  /// mirroring the original site's single `renderUniPath()` function
+  /// rather than 3 separate pages. Replaces the earlier
+  /// `studentExploreMajors` route, which pointed at Explore Majors as its
+  /// own standalone page before Find Universities existed.
+  static const studentTargetUniversities = '/student/target-universities';
 }
 
 /// Bridges auth-state changes into go_router's `refreshListenable`.
@@ -114,8 +112,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const GradesScreen(),
       ),
       GoRoute(
-        path: AppRoutes.studentExploreMajors,
-        builder: (context, state) => const ExploreMajorsScreen(),
+        path: AppRoutes.studentTargetUniversities,
+        builder: (context, state) => const TargetUniversitiesScreen(),
       ),
     ],
     redirect: (context, state) {
@@ -129,7 +127,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           target == AppRoutes.studentProfile ||
           target == AppRoutes.studentTests ||
           target == AppRoutes.studentGrades ||
-          target == AppRoutes.studentExploreMajors;
+          target == AppRoutes.studentTargetUniversities;
 
       // Both "public-only" screens (Choose Role and the Login form itself)
       // should be skipped once a session already exists — not just Login.

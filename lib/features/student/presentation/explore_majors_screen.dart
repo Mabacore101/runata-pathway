@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../application/majors_controller.dart';
 import '../domain/major_entry.dart';
@@ -11,16 +9,19 @@ import '../domain/majors_catalog.dart';
 /// Explore Majors — Target Universities tab 1. Every action here saves
 /// immediately (see majors_controller.dart) — no separate Save button.
 ///
-/// Supplies its own Scaffold/AppBar rather than relying on the router to
-/// wrap it — same convention TestsScreen/GradesScreen/ProfileScreen use.
-/// (Earlier version left this bare, which rendered with no Material
-/// surface at all once routed directly — the widget tests didn't catch
-/// it because their harness manually wrapped it in a Scaffold.)
+/// Bare content, no own Scaffold/AppBar — this is now embedded as one tab
+/// inside TargetUniversitiesScreen, which supplies the shared Scaffold/
+/// AppBar/TabBar for all of Explore Majors / Find Universities / My
+/// Shortlist. (An earlier version gave this screen its own Scaffold when
+/// it was still a standalone route — see target_universities_screen.dart
+/// for why that changed.)
 class ExploreMajorsScreen extends ConsumerWidget {
   const ExploreMajorsScreen({super.key, this.onContinue});
 
-  /// Left as a callback rather than a hardcoded go_router call so this
-  /// screen doesn't need the Find Universities route to exist yet.
+  /// Called when "Continue to universities →" is tapped with the gate
+  /// satisfied. TargetUniversitiesScreen wires this to switch to the
+  /// Find Universities tab (`TabController.animateTo(1)`) rather than a
+  /// route push, since both tabs now live on the same screen.
   final VoidCallback? onContinue;
 
   @override
@@ -32,137 +33,124 @@ class ExploreMajorsScreen extends ConsumerWidget {
         .where((c) => !majors.any((m) => m.major == c.major))
         .toList();
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Explore Majors')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Row(
           children: [
-            Row(
-              children: [
-                const Text('🎓', style: TextStyle(fontSize: 22)),
-                const SizedBox(width: 10),
-                Text(
-                  'Explore majors',
-                  style: AppFonts.display(fontSize: 20, color: AppColors.ink),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
+            const Text('🎓', style: TextStyle(fontSize: 22)),
+            const SizedBox(width: 10),
             Text(
-              'Add up to 6 majors with a target country, mark your Top 3, '
-              'then choose 1 anchor. Your anchor sets your required club.',
-              style: AppFonts.body(fontSize: 13, color: AppColors.muted),
-            ),
-            const SizedBox(height: 20),
-
-            Text(
-              'Majors offered — explore what each is about',
-              style: AppFonts.body(weight: FontWeight.w700, fontSize: 13),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                for (final c in majorCatalog) _MajorCatalogCard(entry: c),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            Text(
-              'Selected ${majors.length}/6 · Top 3 marked ${settings.topMarked.length}/3 · '
-              'Anchor ${settings.anchor?.major ?? "not set"}',
-              style: AppFonts.body(fontSize: 12, color: AppColors.inkSoft),
-            ),
-            const SizedBox(height: 12),
-
-            if (majors.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surface2,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'No majors yet — add some below.',
-                  style: AppFonts.body(color: AppColors.muted),
-                ),
-              )
-            else
-              for (var i = 0; i < majors.length; i++) ...[
-                _MajorRow(
-                  entry: majors[i],
-                  description:
-                      catalogEntryFor(majors[i].major)?.description ?? '',
-                  onToggleTop: () async {
-                    final ok = await controller.toggleTop(i);
-                    if (!ok && context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('You can mark only 3 as Top 3')),
-                      );
-                    }
-                  },
-                  onSetAnchor: () => controller.setAnchor(i),
-                  onRemove: () => controller.removeMajor(i),
-                ),
-                const SizedBox(height: 10),
-              ],
-            const SizedBox(height: 16),
-
-            ElevatedButton(
-              onPressed: settings.readyToContinue ? onContinue : null,
-              child: const Text('Continue to universities →'),
-            ),
-            if (!settings.readyToContinue)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  'Mark exactly 3 majors as Top 3 and choose 1 anchor to continue.',
-                  style: AppFonts.body(fontSize: 11.5, color: AppColors.muted),
-                ),
-              ),
-            const SizedBox(height: 24),
-
-            Text(
-              'Add a major',
-              style: AppFonts.body(weight: FontWeight.w700, fontSize: 13),
-            ),
-            const SizedBox(height: 8),
-            if (majors.length >= 6)
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.surface2,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'You have added 6 majors (the maximum).',
-                  style: AppFonts.body(color: AppColors.muted),
-                ),
-              )
-            else
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  for (final c in addable)
-                    OutlinedButton(
-                      onPressed: () => controller.addMajor(c.major),
-                      child: Text('+ ${c.major}'),
-                    ),
-                ],
-              ),
-            const SizedBox(height: 24),
-
-            OutlinedButton(
-              onPressed: () => context.go(AppRoutes.studentHome),
-              child: const Text('← Back to home'),
+              'Explore majors',
+              style: AppFonts.display(fontSize: 20, color: AppColors.ink),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 4),
+        Text(
+          'Add up to 6 majors with a target country, mark your Top 3, '
+          'then choose 1 anchor. Your anchor sets your required club.',
+          style: AppFonts.body(fontSize: 13, color: AppColors.muted),
+        ),
+        const SizedBox(height: 20),
+
+        Text(
+          'Majors offered — explore what each is about',
+          style: AppFonts.body(weight: FontWeight.w700, fontSize: 13),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (final c in majorCatalog) _MajorCatalogCard(entry: c),
+          ],
+        ),
+        const SizedBox(height: 24),
+
+        Text(
+          'Selected ${majors.length}/6 · Top 3 marked ${settings.topMarked.length}/3 · '
+          'Anchor ${settings.anchor?.major ?? "not set"}',
+          style: AppFonts.body(fontSize: 12, color: AppColors.inkSoft),
+        ),
+        const SizedBox(height: 12),
+
+        if (majors.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface2,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'No majors yet — add some below.',
+              style: AppFonts.body(color: AppColors.muted),
+            ),
+          )
+        else
+          for (var i = 0; i < majors.length; i++) ...[
+            _MajorRow(
+              entry: majors[i],
+              description: catalogEntryFor(majors[i].major)?.description ?? '',
+              onToggleTop: () async {
+                final ok = await controller.toggleTop(i);
+                if (!ok && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('You can mark only 3 as Top 3')),
+                  );
+                }
+              },
+              onSetAnchor: () => controller.setAnchor(i),
+              onRemove: () => controller.removeMajor(i),
+            ),
+            const SizedBox(height: 10),
+          ],
+        const SizedBox(height: 16),
+
+        ElevatedButton(
+          onPressed: settings.readyToContinue ? onContinue : null,
+          child: const Text('Continue to universities →'),
+        ),
+        if (!settings.readyToContinue)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Mark exactly 3 majors as Top 3 and choose 1 anchor to continue.',
+              style: AppFonts.body(fontSize: 11.5, color: AppColors.muted),
+            ),
+          ),
+        const SizedBox(height: 24),
+
+        Text(
+          'Add a major',
+          style: AppFonts.body(weight: FontWeight.w700, fontSize: 13),
+        ),
+        const SizedBox(height: 8),
+        if (majors.length >= 6)
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.surface2,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'You have added 6 majors (the maximum).',
+              style: AppFonts.body(color: AppColors.muted),
+            ),
+          )
+        else
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final c in addable)
+                OutlinedButton(
+                  onPressed: () => controller.addMajor(c.major),
+                  child: Text('+ ${c.major}'),
+                ),
+            ],
+          ),
+      ],
     );
   }
 }
@@ -245,10 +233,7 @@ class _MajorRow extends StatelessWidget {
     // Anchor gets its own orange styling, distinct from plain Top-3 teal
     // — matches the original site's `.pwrow.anchor` orange highlight
     // (layered on top of `.pwrow.top`'s teal, since a major must already
-    // be Top-marked before it can be the anchor). Previously this row
-    // only branched on `entry.top`, so the anchor looked identical to
-    // any other Top 3 major — the Anchor button's own label
-    // ('● Anchor' vs 'Anchor') was the only visual cue.
+    // be Top-marked before it can be the anchor).
     final Color background;
     final Color border;
     if (entry.anchor) {

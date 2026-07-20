@@ -62,12 +62,15 @@ void main() {
     String boxName, {
     VoidCallback? onContinue,
   }) async {
-    // ExploreMajorsScreen now supplies its own Scaffold/AppBar (see that
-    // file's doc comment — it was bare before, which is why the router
-    // rendered it with no Material surface at all). No extra Scaffold
-    // wrapping needed here anymore.
+    // ExploreMajorsScreen no longer supplies its own Scaffold — it's now
+    // embedded as a tab inside TargetUniversitiesScreen, which owns the
+    // shared Scaffold/AppBar/TabBar. This test wraps it in a bare Scaffold
+    // itself to mirror that real embedding (and to give TextButton/
+    // OutlinedButton/SnackBar a proper Material/ScaffoldMessenger
+    // ancestor), same as the very first version of this test before the
+    // screen briefly grew its own Scaffold for the standalone-route era.
     //
-    // Its root ListView holds a 17-entry catalog grid plus the majors
+    // Its content also holds a 17-entry catalog grid plus the majors
     // picker — Flutter's Sliver machinery only BUILDS children within the
     // viewport + a small cache extent, not the whole list, so the test
     // viewport needs to comfortably exceed the full content height or
@@ -91,7 +94,7 @@ void main() {
         ),
       ],
       child: MaterialApp(
-        home: ExploreMajorsScreen(onContinue: onContinue),
+        home: Scaffold(body: ExploreMajorsScreen(onContinue: onContinue)),
       ),
     );
   }
@@ -141,6 +144,30 @@ void main() {
     final continueButton =
         find.widgetWithText(ElevatedButton, 'Continue to universities →');
     expect(tester.widget<ElevatedButton>(continueButton).onPressed, isNull);
+  });
+
+  testWidgets(
+      'Continue calls onContinue (tab switch, in the real app) once the gate is satisfied',
+      (tester) async {
+    var continued = false;
+    await tester.pumpWidget(
+      await harness(tester, 'majors_screen_continue_enabled',
+          onContinue: () => continued = true),
+    );
+    await tapAndSettle(tester, find.text('+ Computer Science'));
+    await tapAndSettle(tester, find.text('+ Economics'));
+    await tapAndSettle(tester, find.text('+ Psychology'));
+    await tapAndSettle(tester, find.text('☆ Top 3').first);
+    await tapAndSettle(tester, find.text('☆ Top 3').first);
+    await tapAndSettle(tester, find.text('☆ Top 3').first);
+    await tapAndSettle(tester, find.text('Anchor').first);
+
+    final continueButton =
+        find.widgetWithText(ElevatedButton, 'Continue to universities →');
+    expect(tester.widget<ElevatedButton>(continueButton).onPressed, isNotNull);
+
+    await tapAndSettle(tester, continueButton);
+    expect(continued, isTrue);
   });
 
   testWidgets('un-marking Top on the anchor major clears the anchor tag',
