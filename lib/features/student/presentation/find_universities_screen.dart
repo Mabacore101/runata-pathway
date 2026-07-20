@@ -9,7 +9,6 @@ import '../application/university_targets_controller.dart';
 import '../domain/fit_status.dart';
 import '../domain/majors_catalog.dart';
 import '../domain/major_entry.dart';
-import '../domain/test_entry.dart';
 import '../domain/university_catalog.dart';
 import '../domain/university_target.dart';
 
@@ -21,10 +20,23 @@ import '../domain/university_target.dart';
 /// spec's "At Least 1 Marked as Top?" diamond) — NOT on the stricter
 /// exactly-3-Top+anchor gate Explore Majors' own Continue button uses.
 class FindUniversitiesScreen extends ConsumerStatefulWidget {
-  const FindUniversitiesScreen({super.key, this.onGoToExploreMajors});
+  const FindUniversitiesScreen({
+    super.key,
+    this.onGoToExploreMajors,
+    this.onReviewShortlist,
+  });
 
   /// Wired by TargetUniversitiesScreen to switch back to tab 0.
   final VoidCallback? onGoToExploreMajors;
+
+  /// Wired by TargetUniversitiesScreen to switch to tab 2 (My Shortlist).
+  /// Only surfaced once every Top-marked major has at least 1 university
+  /// chosen (`allMajorsHaveUni` below) — matches the JS's `nextBtn`
+  /// condition on this tab exactly. Left null-safe/optional the same way
+  /// ExploreMajorsScreen.onContinue was before Find Universities existed,
+  /// since this was genuinely deferred until My Shortlist existed to
+  /// receive the tap, not an oversight.
+  final VoidCallback? onReviewShortlist;
 
   @override
   ConsumerState<FindUniversitiesScreen> createState() =>
@@ -60,7 +72,7 @@ class _FindUniversitiesScreenState
         ref.read(universityTargetsControllerProvider.notifier);
 
     final testEntries = ref.watch(testsControllerProvider);
-    final studentIelts = _studentIeltsScore(testEntries);
+    final studentIelts = studentIeltsScore(testEntries);
 
     final majorField = catalogEntryFor(effectiveMajor)?.field ?? '';
     final matches = (universitiesByCountry[effectiveCountry] ?? const [])
@@ -71,28 +83,52 @@ class _FindUniversitiesScreenState
     final majorFull = curCount >= UniversityTargetsController.maxPerMajor;
     final chosenForMajor = targets.forMajor(effectiveMajor);
 
+    // "Next" appears only once every chosen major has at least one
+    // university — matches the JS's `allMajorsHaveUni` exactly.
+    final allMajorsHaveUni = myMajors.every((m) => targets.countForMajor(m) > 0);
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text(
-          'Universities per major',
-          style: AppFonts.display(fontSize: 18, color: AppColors.ink),
-        ),
-        const SizedBox(height: 4),
-        Text.rich(
-          TextSpan(
-            style: AppFonts.body(fontSize: 12.5, color: AppColors.inkSoft),
-            children: [
-              const TextSpan(text: 'Pick up to '),
-              TextSpan(
-                text: '${UniversityTargetsController.maxPerMajor}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Universities per major',
+                    style: AppFonts.display(fontSize: 18, color: AppColors.ink),
+                  ),
+                  const SizedBox(height: 4),
+                  Text.rich(
+                    TextSpan(
+                      style: AppFonts.body(fontSize: 12.5, color: AppColors.inkSoft),
+                      children: [
+                        const TextSpan(text: 'Pick up to '),
+                        TextSpan(
+                          text: '${UniversityTargetsController.maxPerMajor}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const TextSpan(
+                          text: ' universities for each major. Tap a major to work on it.',
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const TextSpan(
-                text: ' universities for each major. Tap a major to work on it.',
+            ),
+            if (allMajorsHaveUni && widget.onReviewShortlist != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: ElevatedButton(
+                  onPressed: widget.onReviewShortlist,
+                  child: const Text('Next: review shortlist →'),
+                ),
               ),
-            ],
-          ),
+          ],
         ),
         const SizedBox(height: 12),
 
@@ -329,19 +365,6 @@ String _effectiveCountry(MajorEntry? anchor, String? selectedCountry) {
   return uniCountries.first;
 }
 
-/// Mirrors the JS's `sc.ielts` — pulled from the student's actual My
-/// Tests IELTS row rather than a separate stored score. Returns null if
-/// no IELTS row exists, or its `latest` text doesn't parse as a number
-/// (matches JS's `isNaN(parseFloat(sc.ielts))` guard).
-double? _studentIeltsScore(List<TestEntry> entries) {
-  for (final t in entries) {
-    if (t.type == TestType.ielts) {
-      return t.latest != null ? double.tryParse(t.latest!) : null;
-    }
-  }
-  return null;
-}
-
 class _GateMessage extends StatelessWidget {
   const _GateMessage({this.onGoToExploreMajors});
   final VoidCallback? onGoToExploreMajors;
@@ -556,7 +579,7 @@ class _UniversityCard extends StatelessWidget {
               ],
               if (showFitChip) ...[
                 const SizedBox(width: 6),
-                _FitChip(fit: fitStatusFor(entry, studentIelts)),
+                FitChip(fit: fitStatusFor(entry, studentIelts)),
               ],
             ],
           ),
@@ -632,8 +655,8 @@ class _TypeBadge extends StatelessWidget {
   }
 }
 
-class _FitChip extends StatelessWidget {
-  const _FitChip({required this.fit});
+class FitChip extends StatelessWidget {
+  const FitChip({required this.fit});
   final FitStatus fit;
 
   @override
