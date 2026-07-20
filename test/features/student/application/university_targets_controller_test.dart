@@ -210,6 +210,67 @@ void main() {
       });
     });
 
+    group('updateNote', () {
+      test('sets the note on the matching row', () async {
+        final box = await Hive.openBox<UniversityTarget>('uni_ctrl_note_set');
+        container = buildContainer(box);
+        final notifier = container.read(universityTargetsControllerProvider.notifier);
+
+        await notifier.addTarget(major: 'Law', country: 'Indonesia', university: 'Uni A');
+        final id = container.read(universityTargetsControllerProvider).single.id;
+
+        await notifier.updateNote(id, 'IELTS 6.5, deadline March');
+
+        expect(
+          container.read(universityTargetsControllerProvider).single.note,
+          'IELTS 6.5, deadline March',
+        );
+      });
+
+      test('only updates the matching row, leaving others untouched', () async {
+        final box = await Hive.openBox<UniversityTarget>('uni_ctrl_note_scoped');
+        container = buildContainer(box);
+        final notifier = container.read(universityTargetsControllerProvider.notifier);
+
+        await notifier.addTarget(major: 'Law', country: 'Indonesia', university: 'Uni A');
+        await notifier.addTarget(major: 'Law', country: 'Indonesia', university: 'Uni B');
+        final targetB = container
+            .read(universityTargetsControllerProvider)
+            .firstWhere((t) => t.university == 'Uni B');
+
+        await notifier.updateNote(targetB.id, 'Only for Uni B');
+
+        final state = container.read(universityTargetsControllerProvider);
+        expect(state.firstWhere((t) => t.university == 'Uni A').note, isNull);
+        expect(state.firstWhere((t) => t.university == 'Uni B').note, 'Only for Uni B');
+      });
+
+      test('is a no-op for an id that does not exist', () async {
+        final box = await Hive.openBox<UniversityTarget>('uni_ctrl_note_noop');
+        container = buildContainer(box);
+        final notifier = container.read(universityTargetsControllerProvider.notifier);
+
+        await notifier.addTarget(major: 'Law', country: 'Indonesia', university: 'Uni A');
+        await notifier.updateNote('not-a-real-id', 'should not apply');
+
+        expect(container.read(universityTargetsControllerProvider).single.note, isNull);
+      });
+
+      test('persists across a rebuilt controller', () async {
+        final box = await Hive.openBox<UniversityTarget>('uni_ctrl_note_persist');
+        container = buildContainer(box);
+        final notifier = container.read(universityTargetsControllerProvider.notifier);
+        await notifier.addTarget(major: 'Law', country: 'Indonesia', university: 'Uni A');
+        final id = container.read(universityTargetsControllerProvider).single.id;
+        await notifier.updateNote(id, 'Saved note');
+
+        final rebuilt = buildContainer(box);
+        addTearDown(rebuilt.dispose);
+
+        expect(rebuilt.read(universityTargetsControllerProvider).single.note, 'Saved note');
+      });
+    });
+
     group('UniversityTargetsDerived (countForMajor/forMajor)', () {
       test('countForMajor and forMajor scope correctly across majors', () async {
         final box = await Hive.openBox<UniversityTarget>('uni_ctrl_derived');
