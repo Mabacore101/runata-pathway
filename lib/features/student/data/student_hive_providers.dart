@@ -4,6 +4,7 @@ import 'package:hive_ce/hive_ce.dart';
 import '../../../core/persistence/hive_boxes.dart';
 import '../domain/grade_subject_entry.dart';
 import '../domain/student_grades_settings.dart';
+import '../domain/student_majors_settings.dart';
 import '../domain/student_profile.dart';
 import '../domain/test_entry.dart';
 
@@ -38,4 +39,12 @@ final studentGradesBoxProvider = Provider<Box<GradeSubjectEntry>>((ref) {
 final studentGradesSettingsBoxProvider =
     Provider<Box<StudentGradesSettings>>((ref) {
   return Hive.box<StudentGradesSettings>(HiveBoxes.studentGradesSettings);
+});
+
+/// Explore Majors' single-record box (see [StudentMajorsSettings]) — same
+/// role as [studentGradesSettingsBoxProvider]: one fixed-key record per
+/// student rather than a natural collection.
+final studentMajorsSettingsBoxProvider =
+    Provider<Box<StudentMajorsSettings>>((ref) {
+  return Hive.box<StudentMajorsSettings>(HiveBoxes.studentMajors);
 });

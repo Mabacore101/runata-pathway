@@ -9,6 +9,12 @@ class HiveBoxes {
   static const studentTests = 'student_tests_box';
   static const studentGrades = 'student_grades_box';
   static const studentGradesSettings = 'student_grades_settings_box';
+
+  /// Explore Majors (Target Universities tab 1) — single-record box, same
+  /// pattern as [studentGradesSettings]. The whole majors list (max 6,
+  /// with top/anchor flags) lives in one [StudentMajorsSettings] record
+  /// under [HiveKeys.studentMajorsSettings], not one entry per box key.
+  static const studentMajors = 'student_majors_box';
 }
 
 /// Fixed keys used inside boxes that hold a single record rather than a
@@ -26,4 +32,9 @@ class HiveKeys {
   /// [StudentGradesSettings] record per student (track choice + custom
   /// subject names), not one per semester.
   static const studentGradesSettings = 'grades_settings';
+
+  /// Same single-record pattern as [studentGradesSettings] — one
+  /// [StudentMajorsSettings] record per student, stored under a fixed key
+  /// in [HiveBoxes.studentMajors].
+  static const studentMajorsSettings = 'majors_settings';
 }

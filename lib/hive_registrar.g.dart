@@ -4,8 +4,10 @@
 
 import 'package:hive_ce/hive_ce.dart';
 import 'package:runata_pathway/features/student/domain/grade_subject_entry.dart';
+import 'package:runata_pathway/features/student/domain/major_entry.dart';
 import 'package:runata_pathway/features/student/domain/parent_guardian_entry.dart';
 import 'package:runata_pathway/features/student/domain/student_grades_settings.dart';
+import 'package:runata_pathway/features/student/domain/student_majors_settings.dart';
 import 'package:runata_pathway/features/student/domain/student_profile.dart';
 import 'package:runata_pathway/features/student/domain/test_entry.dart';
 
@@ -14,8 +16,10 @@ extension HiveRegistrar on HiveInterface {
     registerAdapter(GradeSubjectEntryAdapter());
     registerAdapter(GradeSubjectGroupAdapter());
     registerAdapter(GradeTrackAdapter());
+    registerAdapter(MajorEntryAdapter());
     registerAdapter(ParentGuardianEntryAdapter());
     registerAdapter(StudentGradesSettingsAdapter());
+    registerAdapter(StudentMajorsSettingsAdapter());
     registerAdapter(StudentProfileAdapter());
     registerAdapter(TestEntryAdapter());
     registerAdapter(TestStatusAdapter());
@@ -28,8 +32,10 @@ extension IsolatedHiveRegistrar on IsolatedHiveInterface {
     registerAdapter(GradeSubjectEntryAdapter());
     registerAdapter(GradeSubjectGroupAdapter());
     registerAdapter(GradeTrackAdapter());
+    registerAdapter(MajorEntryAdapter());
     registerAdapter(ParentGuardianEntryAdapter());
     registerAdapter(StudentGradesSettingsAdapter());
+    registerAdapter(StudentMajorsSettingsAdapter());
     registerAdapter(StudentProfileAdapter());
     registerAdapter(TestEntryAdapter());
     registerAdapter(TestStatusAdapter());

@@ -3,6 +3,7 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 import '../../hive_registrar.g.dart';
 import '../../features/student/domain/grade_subject_entry.dart';
 import '../../features/student/domain/student_grades_settings.dart';
+import '../../features/student/domain/student_majors_settings.dart';
 import '../../features/student/domain/student_profile.dart';
 import '../../features/student/domain/test_entry.dart';
 import 'hive_boxes.dart';
@@ -34,7 +35,8 @@ import 'hive_boxes.dart';
 /// model's `@HiveType(typeId: N)` annotation. Reserved so far:
 /// 0 StudentProfile, 1 TestEntry, 2 TestType, 3 TestStatus,
 /// 4 GradeSubjectEntry, 5 GradeSubjectGroup, 6 ParentGuardianEntry,
-/// 7 GradeTrack, 8 StudentGradesSettings. Next free id is **9**.
+/// 7 GradeTrack, 8 StudentGradesSettings, 9 MajorEntry,
+/// 10 StudentMajorsSettings. Next free id is **11**.
 Future<void> initHive() async {
   await Hive.initFlutter();
   Hive.registerAdapters();
@@ -44,5 +46,6 @@ Future<void> initHive() async {
     Hive.openBox<TestEntry>(HiveBoxes.studentTests),
     Hive.openBox<GradeSubjectEntry>(HiveBoxes.studentGrades),
     Hive.openBox<StudentGradesSettings>(HiveBoxes.studentGradesSettings),
+    Hive.openBox<StudentMajorsSettings>(HiveBoxes.studentMajors),
   ]);
 }
