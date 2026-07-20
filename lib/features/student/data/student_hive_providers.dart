@@ -7,6 +7,7 @@ import '../domain/student_grades_settings.dart';
 import '../domain/student_majors_settings.dart';
 import '../domain/student_profile.dart';
 import '../domain/test_entry.dart';
+import '../domain/university_target.dart';
 
 /// Box access providers — thin wrappers around boxes already opened by
 /// `initHive()` in `main.dart` (before `ProviderScope` even exists, so
@@ -47,4 +48,11 @@ final studentGradesSettingsBoxProvider =
 final studentMajorsSettingsBoxProvider =
     Provider<Box<StudentMajorsSettings>>((ref) {
   return Hive.box<StudentMajorsSettings>(HiveBoxes.studentMajors);
+});
+
+/// Find Universities' shortlist box — a flat collection, same role as
+/// [studentTestsBoxProvider] rather than the single-record boxes above.
+final studentUniversityTargetsBoxProvider =
+    Provider<Box<UniversityTarget>>((ref) {
+  return Hive.box<UniversityTarget>(HiveBoxes.studentUniversityTargets);
 });

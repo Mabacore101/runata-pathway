@@ -6,6 +6,7 @@ import '../../features/student/domain/student_grades_settings.dart';
 import '../../features/student/domain/student_majors_settings.dart';
 import '../../features/student/domain/student_profile.dart';
 import '../../features/student/domain/test_entry.dart';
+import '../../features/student/domain/university_target.dart';
 import 'hive_boxes.dart';
 
 /// Registers every @HiveType adapter and opens every box the app needs,
@@ -36,7 +37,7 @@ import 'hive_boxes.dart';
 /// 0 StudentProfile, 1 TestEntry, 2 TestType, 3 TestStatus,
 /// 4 GradeSubjectEntry, 5 GradeSubjectGroup, 6 ParentGuardianEntry,
 /// 7 GradeTrack, 8 StudentGradesSettings, 9 MajorEntry,
-/// 10 StudentMajorsSettings. Next free id is **11**.
+/// 10 StudentMajorsSettings, 11 UniversityTarget. Next free id is **12**.
 Future<void> initHive() async {
   await Hive.initFlutter();
   Hive.registerAdapters();
@@ -47,5 +48,6 @@ Future<void> initHive() async {
     Hive.openBox<GradeSubjectEntry>(HiveBoxes.studentGrades),
     Hive.openBox<StudentGradesSettings>(HiveBoxes.studentGradesSettings),
     Hive.openBox<StudentMajorsSettings>(HiveBoxes.studentMajors),
+    Hive.openBox<UniversityTarget>(HiveBoxes.studentUniversityTargets),
   ]);
 }

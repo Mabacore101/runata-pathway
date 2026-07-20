@@ -10,6 +10,7 @@ import 'package:runata_pathway/features/student/domain/student_grades_settings.d
 import 'package:runata_pathway/features/student/domain/student_majors_settings.dart';
 import 'package:runata_pathway/features/student/domain/student_profile.dart';
 import 'package:runata_pathway/features/student/domain/test_entry.dart';
+import 'package:runata_pathway/features/student/domain/university_target.dart';
 
 extension HiveRegistrar on HiveInterface {
   void registerAdapters() {
@@ -24,6 +25,7 @@ extension HiveRegistrar on HiveInterface {
     registerAdapter(TestEntryAdapter());
     registerAdapter(TestStatusAdapter());
     registerAdapter(TestTypeAdapter());
+    registerAdapter(UniversityTargetAdapter());
   }
 }
 
@@ -40,5 +42,6 @@ extension IsolatedHiveRegistrar on IsolatedHiveInterface {
     registerAdapter(TestEntryAdapter());
     registerAdapter(TestStatusAdapter());
     registerAdapter(TestTypeAdapter());
+    registerAdapter(UniversityTargetAdapter());
   }
 }

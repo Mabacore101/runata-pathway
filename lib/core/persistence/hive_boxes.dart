@@ -15,6 +15,13 @@ class HiveBoxes {
   /// with top/anchor flags) lives in one [StudentMajorsSettings] record
   /// under [HiveKeys.studentMajorsSettings], not one entry per box key.
   static const studentMajors = 'student_majors_box';
+
+  /// Find Universities' shortlist — flat, id-keyed collection (one
+  /// [UniversityTarget] row per major+country+university combo), same
+  /// pattern as [studentTests]. No matching [HiveKeys] entry needed —
+  /// unlike the single-record boxes above, each row keys itself by its
+  /// own `id`, not a shared fixed key.
+  static const studentUniversityTargets = 'student_university_targets_box';
 }
 
 /// Fixed keys used inside boxes that hold a single record rather than a
