@@ -6,6 +6,7 @@ import '../../features/auth/application/auth_controller.dart';
 import '../../features/auth/application/auth_state.dart';
 import '../../features/auth/presentation/choose_role_screen.dart';
 import '../../features/auth/presentation/student_login_screen.dart';
+import '../../features/student/presentation/explore_majors_screen.dart';
 import '../../features/student/presentation/profile_screen.dart';
 import '../../features/student/presentation/grades_screen.dart';
 import '../../features/student/presentation/student_home_screen.dart';
@@ -24,6 +25,16 @@ class AppRoutes {
   static const studentProfile = '/student/profile';
   static const studentTests = '/student/tests';
   static const studentGrades = '/student/grades';
+
+  /// Explore Majors — Target Universities tab 1 (Day 3, in progress).
+  /// Routed on its own for now, same "preview" treatment
+  /// studentPathway's stub gives Profile/Tests/Grades — once Find
+  /// Universities + My Shortlist exist, day3-trimmed-source.md's
+  /// evidence that the original site treats all 3 as ONE screen with
+  /// internal tab-switching (`renderUniPath()`), not 3 separate pages,
+  /// is worth revisiting before this becomes 3 permanent separate
+  /// routes instead of 1 route with tab state.
+  static const studentExploreMajors = '/student/explore-majors';
 }
 
 /// Bridges auth-state changes into go_router's `refreshListenable`.
@@ -102,6 +113,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.studentGrades,
         builder: (context, state) => const GradesScreen(),
       ),
+      GoRoute(
+        path: AppRoutes.studentExploreMajors,
+        builder: (context, state) => const ExploreMajorsScreen(),
+      ),
     ],
     redirect: (context, state) {
       final isSignedIn = ref.read(authControllerProvider).isSignedIn;
@@ -113,7 +128,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           target == AppRoutes.studentNavGrid ||
           target == AppRoutes.studentProfile ||
           target == AppRoutes.studentTests ||
-          target == AppRoutes.studentGrades;
+          target == AppRoutes.studentGrades ||
+          target == AppRoutes.studentExploreMajors;
 
       // Both "public-only" screens (Choose Role and the Login form itself)
       // should be skipped once a session already exists — not just Login.

@@ -17,7 +17,7 @@ class StudentPathwayStubScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _StubScaffold(
         title: 'Pathway',
-        // TEMPORARY — Day 2 scaffolding only, not the real Pathway hub UI.
+        // TEMPORARY — Day 2/3 scaffolding only, not the real Pathway hub UI.
         // Pathway is the flow spec's "direct list" door into the 6 forms,
         // so it's the one stub getting a preview link as each form ships
         // this week — without this there'd be no way to reach the new
@@ -37,6 +37,10 @@ class StudentPathwayStubScreen extends StatelessWidget {
           OutlinedButton(
             onPressed: () => context.push(AppRoutes.studentGrades),
             child: const Text('Preview: My Grades'),
+          ),
+          OutlinedButton(
+            onPressed: () => context.push(AppRoutes.studentExploreMajors),
+            child: const Text('Preview: Explore Majors'),
           ),
         ],
       );
