@@ -133,3 +133,42 @@ String daysLabel(String club, List<String> sessionDays) {
   if (days.isEmpty) return 'n/a';
   return days.map((d) => d.substring(0, 3)).join(', ');
 }
+
+/// Every real, selectable club (`Object.keys(CLUB_TRACK)` in the JS) —
+/// the full universe [addableClubsFor]'s pool is drawn from. Order isn't
+/// meaningful here; [addableClubsFor] sorts alphabetically itself, same
+/// as the JS's own pool.
+List<String> get allClubNames => clubTrack.keys.toList(growable: false);
+
+/// How many clubs a student must rank in total to unlock "Generate my
+/// week" (JS: `need = freeSlots+1 = sdaysFor(effKeyOf()).length`) — Grade
+/// 10: 2 (1 scheduled + 1 backup), Grades 11/12: 3 (2 scheduled + 1
+/// backup). This is the grade-dependent count that corrects
+/// planning.md's original flat "2" (day4-trimmed-source.md's "Read this
+/// first" #1).
+int neededPicksFor(ClubSessionBand band) => sessionDaysFor(band).length;
+
+/// Index within the ranking list (0-based) at which entries stop being
+/// "scheduled choices" and become "Backup" (JS's `freeSlots`). Grade 10:
+/// only index 0 schedules (index ≥1 is backup); Grades 11/12: indices
+/// 0–1 schedule (index ≥2 is backup).
+int scheduledSlotsFor(ClubSessionBand band) => sessionDaysFor(band).length - 1;
+
+/// The addable pool for Rank Other Clubs: every real club except
+/// [requiredClub], able to run on at least one of [sessionDays], not
+/// already in [alreadyRanked] — alphabetical, mirrors the JS's
+/// `Object.keys(CLUB_TRACK).filter(c=>c!==req&&clubDays(c,sd).length>0&&
+/// !ranking.includes(c)).sort()`.
+List<String> addableClubsFor({
+  required String? requiredClub,
+  required List<String> sessionDays,
+  required List<String> alreadyRanked,
+}) {
+  final pool = allClubNames.where((c) {
+    if (c == requiredClub) return false;
+    if (alreadyRanked.contains(c)) return false;
+    return clubDays(c, sessionDays).isNotEmpty;
+  }).toList()
+    ..sort();
+  return pool;
+}
