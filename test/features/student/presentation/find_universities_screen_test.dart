@@ -58,6 +58,7 @@ void main() {
     List<MajorEntry> majors = const [],
     List<TestEntry> tests = const [],
     VoidCallback? onGoToExploreMajors,
+    VoidCallback? onReviewShortlist,
   }) async {
     // Long card list (up to 4 US universities, each with an expandable
     // requirements section) — same Sliver-culling reasoning as Explore
@@ -93,7 +94,10 @@ void main() {
       ],
       child: MaterialApp(
         home: Scaffold(
-          body: FindUniversitiesScreen(onGoToExploreMajors: onGoToExploreMajors),
+          body: FindUniversitiesScreen(
+            onGoToExploreMajors: onGoToExploreMajors,
+            onReviewShortlist: onReviewShortlist,
+          ),
         ),
       ),
     );
@@ -200,5 +204,56 @@ void main() {
 
     expect(find.text('MET'), findsNothing);
     expect(find.text('ADD IELTS'), findsNothing);
+  });
+
+  testWidgets('bottom Next button is disabled until every Top major has a '
+      'university, then enabled and calls onReviewShortlist', (tester) async {
+    var reviewed = false;
+    await tester.pumpWidget(await harness(
+      tester,
+      majors: [
+        MajorEntry(major: 'Computer Science', top: true, anchor: true),
+        MajorEntry(major: 'Law', top: true),
+      ],
+      onReviewShortlist: () => reviewed = true,
+    ));
+
+    final nextButton =
+        find.widgetWithText(ElevatedButton, 'Next: review shortlist →');
+    expect(tester.widget<ElevatedButton>(nextButton).onPressed, isNull);
+    expect(
+      find.text('Add at least 1 university for each of your Top majors to continue.'),
+      findsOneWidget,
+    );
+
+    // Give Computer Science a university, but Law still has none.
+    await tester.tap(find.widgetWithText(OutlinedButton, '+ Add to my list').first);
+    await tester.pumpAndSettle();
+    expect(tester.widget<ElevatedButton>(nextButton).onPressed, isNull);
+
+    // Switch to Law and give it one too — now every Top major qualifies.
+    await tester.tap(find.text('Law').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(OutlinedButton, '+ Add to my list').first);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<ElevatedButton>(nextButton).onPressed, isNotNull);
+    await tester.tap(nextButton);
+    await tester.pumpAndSettle();
+    expect(reviewed, isTrue);
+  });
+
+  testWidgets('bottom Previous button calls onGoToExploreMajors', (tester) async {
+    var wentBack = false;
+    await tester.pumpWidget(await harness(
+      tester,
+      majors: [MajorEntry(major: 'Computer Science', top: true, anchor: true)],
+      onGoToExploreMajors: () => wentBack = true,
+    ));
+
+    await tester.tap(find.widgetWithText(OutlinedButton, '← Previous'));
+    await tester.pumpAndSettle();
+
+    expect(wentBack, isTrue);
   });
 }
