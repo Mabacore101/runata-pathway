@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/student_majors_repository.dart';
 import '../domain/major_entry.dart';
 import '../domain/student_majors_settings.dart';
+import 'university_targets_controller.dart';
 
 final majorsControllerProvider =
     NotifierProvider<MajorsController, StudentMajorsSettings>(
@@ -40,15 +41,23 @@ class MajorsController extends Notifier<StudentMajorsSettings> {
     );
   }
 
-  /// Mirrors `data-mrmm`: splice the entry out, nothing else. No explicit
-  /// anchor-clearing code here — if [index] held the anchor,
-  /// [MajorsDerived.anchor] simply stops finding it on the next read,
-  /// exactly like the JS's from-scratch `persistMajors()` rescan. This is
-  /// the "free" half of the delete-a-major cascade
-  /// day3-trimmed-source.md calls out.
+  /// Mirrors `data-mrmm`: splice the entry out, then cascade-delete any
+  /// shortlisted universities for it (`UniversityTargetsController.
+  /// removeAllForMajor`) — a major that no longer exists shouldn't leave
+  /// orphaned rows behind in My Shortlist pointing at it. This is a real
+  /// bug fix, not the original behavior: the anchor/top3 side of this
+  /// removal was always "free" (derived fresh from the list, so it just
+  /// stops finding a deleted major on the next read — see
+  /// `MajorsDerived.anchor` below), but university targets are a
+  /// SEPARATE, flat collection with no such derivation — nothing cleared
+  /// them automatically until this call was added.
   Future<void> removeMajor(int index) async {
+    final removedMajor = state.majors[index].major;
     final majors = [...state.majors]..removeAt(index);
     await _persist(StudentMajorsSettings(majors: majors));
+    await ref
+        .read(universityTargetsControllerProvider.notifier)
+        .removeAllForMajor(removedMajor);
   }
 
   /// Mirrors `data-mtop`. Two guards, same order as the JS:

@@ -5,18 +5,31 @@ import 'package:hive_ce_test/hive_ce_test.dart';
 
 import 'package:runata_pathway/core/persistence/hive_adapter_registration.dart';
 import 'package:runata_pathway/features/student/application/majors_controller.dart';
+import 'package:runata_pathway/features/student/application/university_targets_controller.dart';
 import 'package:runata_pathway/features/student/data/student_majors_repository.dart';
+import 'package:runata_pathway/features/student/data/student_university_targets_repository.dart';
 import 'package:runata_pathway/features/student/domain/major_entry.dart';
 import 'package:runata_pathway/features/student/domain/student_majors_settings.dart';
+import 'package:runata_pathway/features/student/domain/university_target.dart';
 
 void main() {
   group('MajorsController + StudentMajorsRepository', () {
     late ProviderContainer container;
+    // removeMajor now cascades into UniversityTargetsController (see its
+    // doc comment) — every test that calls removeMajor needs this wired
+    // up too, not just the ones specifically testing the cascade. A
+    // single shared box per test (fresh each time via setUp/
+    // tearDownTestHive, same as every other box in this file) keeps that
+    // an invisible plumbing detail rather than something every individual
+    // test below has to set up for itself.
+    late Box<UniversityTarget> uniTargetsBox;
 
     setUp(() async {
       await setUpTestHive();
       registerAdapterIfNeeded(MajorEntryAdapter());
       registerAdapterIfNeeded(StudentMajorsSettingsAdapter());
+      registerAdapterIfNeeded(UniversityTargetAdapter());
+      uniTargetsBox = await Hive.openBox<UniversityTarget>('majors_ctrl_uni_targets');
     });
 
     tearDown(() async {
@@ -29,6 +42,9 @@ void main() {
         overrides: [
           studentMajorsRepositoryProvider.overrideWithValue(
             StudentMajorsRepository(settingsBox),
+          ),
+          studentUniversityTargetsRepositoryProvider.overrideWithValue(
+            StudentUniversityTargetsRepository(uniTargetsBox),
           ),
         ],
       );
@@ -103,7 +119,7 @@ void main() {
       });
     });
 
-    group('removeMajor — the "free" half of the delete cascade', () {
+    group('removeMajor — anchor is free, university targets cascade explicitly', () {
       test('removes the entry at the given index', () async {
         final box =
             await Hive.openBox<StudentMajorsSettings>('majors_ctrl_rm_basic');
@@ -149,6 +165,90 @@ void main() {
         await notifier.removeMajor(1);
 
         expect(container.read(majorsControllerProvider).anchor?.major, 'A');
+      });
+
+      test('removing a major deletes every shortlisted university for it — '
+          'the bug reported directly from the app (CS removed from Explore '
+          'Majors still showed its 3 universities in My Shortlist)', () async {
+        final box = await Hive.openBox<StudentMajorsSettings>(
+            'majors_ctrl_rm_cascade_deletes');
+        container = buildContainer(box);
+        final majorsNotifier = container.read(majorsControllerProvider.notifier);
+        final targetsNotifier =
+            container.read(universityTargetsControllerProvider.notifier);
+
+        await majorsNotifier.addMajor('Computer Science');
+        await majorsNotifier.toggleTop(0);
+        await majorsNotifier.setAnchor(0);
+        await targetsNotifier.addTarget(
+            major: 'Computer Science', country: 'United States', university: 'Uni A');
+        await targetsNotifier.addTarget(
+            major: 'Computer Science', country: 'United States', university: 'Uni B');
+        await targetsNotifier.addTarget(
+            major: 'Computer Science', country: 'United States', university: 'Uni C');
+        expect(container.read(universityTargetsControllerProvider), hasLength(3));
+
+        await majorsNotifier.removeMajor(0);
+
+        expect(container.read(universityTargetsControllerProvider), isEmpty);
+      });
+
+      test('removing a major leaves OTHER majors\' shortlisted universities '
+          'untouched', () async {
+        final box = await Hive.openBox<StudentMajorsSettings>(
+            'majors_ctrl_rm_cascade_scoped');
+        container = buildContainer(box);
+        final majorsNotifier = container.read(majorsControllerProvider.notifier);
+        final targetsNotifier =
+            container.read(universityTargetsControllerProvider.notifier);
+
+        await majorsNotifier.addMajor('Computer Science');
+        await majorsNotifier.addMajor('Law');
+        await targetsNotifier.addTarget(
+            major: 'Computer Science', country: 'United States', university: 'Uni A');
+        await targetsNotifier.addTarget(
+            major: 'Law', country: 'Indonesia', university: 'Uni B');
+
+        await majorsNotifier.removeMajor(0); // removes Computer Science
+
+        final remaining = container.read(universityTargetsControllerProvider);
+        expect(remaining, hasLength(1));
+        expect(remaining.single.major, 'Law');
+      });
+
+      test('removing a major with nothing shortlisted for it does not error',
+          () async {
+        final box = await Hive.openBox<StudentMajorsSettings>(
+            'majors_ctrl_rm_cascade_noop');
+        container = buildContainer(box);
+        final notifier = container.read(majorsControllerProvider.notifier);
+
+        await notifier.addMajor('Computer Science');
+
+        await notifier.removeMajor(0);
+
+        expect(container.read(universityTargetsControllerProvider), isEmpty);
+        expect(container.read(majorsControllerProvider).majors, isEmpty);
+      });
+
+      test('un-Top-marking a major (not removing it) does NOT clear its '
+          'shortlist — only full removal cascades', () async {
+        final box = await Hive.openBox<StudentMajorsSettings>(
+            'majors_ctrl_rm_cascade_untop_no_cascade');
+        container = buildContainer(box);
+        final majorsNotifier = container.read(majorsControllerProvider.notifier);
+        final targetsNotifier =
+            container.read(universityTargetsControllerProvider.notifier);
+
+        await majorsNotifier.addMajor('Computer Science');
+        await majorsNotifier.toggleTop(0);
+        await targetsNotifier.addTarget(
+            major: 'Computer Science', country: 'United States', university: 'Uni A');
+
+        await majorsNotifier.toggleTop(0); // un-Top, major still in the list
+
+        expect(container.read(universityTargetsControllerProvider), hasLength(1));
+        expect(container.read(majorsControllerProvider).majors, hasLength(1));
       });
     });
 

@@ -115,4 +115,25 @@ class UniversityTargetsController extends Notifier<List<UniversityTarget>> {
     await _repository.upsert(updated);
     state = [for (final t in state) if (t.id == id) updated else t];
   }
+
+  /// Removes every shortlisted university for [major] at once.
+  ///
+  /// Called from `MajorsController.removeMajor` when a major is deleted
+  /// entirely from Explore Majors — a deleted major has no shortlist rows
+  /// to "belong" to anymore, so leaving them behind would show orphaned
+  /// entries in My Shortlist for a major that no longer exists in the
+  /// student's list at all. Deliberately NOT triggered by un-Top-marking
+  /// a major (toggleTop) — a major that's still in the list, just
+  /// temporarily off Top 3, keeps its shortlist, since the student might
+  /// re-Top it later and losing curated picks over a reshuffle would be
+  /// needlessly punishing.
+  Future<void> removeAllForMajor(String major) async {
+    final toRemove = state.where((t) => t.major == major).toList();
+    if (toRemove.isEmpty) return;
+
+    for (final t in toRemove) {
+      await _repository.delete(t.id);
+    }
+    state = state.where((t) => t.major != major).toList();
+  }
 }
