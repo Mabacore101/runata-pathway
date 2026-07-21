@@ -134,4 +134,172 @@ void main() {
       expect(container.read(requiredClubProvider), isNull);
     });
   });
+
+  group('ClubRankingController (Day 4 item 2)', () {
+    // No Hive setup needed for this group at all — unlike
+    // requiredClubProvider above, ClubRankingController holds plain
+    // in-memory ranking state (`build() => []`) with nothing to persist
+    // and no dependency on majorsControllerProvider, so a bare
+    // ProviderContainer is the whole fixture.
+    test('starts empty', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      expect(container.read(clubRankingProvider), isEmpty);
+    });
+
+    group('addClub', () {
+      test('appends when under the cap', () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final notifier = container.read(clubRankingProvider.notifier);
+
+        final added = notifier.addClub('Sports Club', 2);
+
+        expect(added, isTrue);
+        expect(container.read(clubRankingProvider), ['Sports Club']);
+      });
+
+      test('refuses once the cap is reached', () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final notifier = container.read(clubRankingProvider.notifier);
+
+        notifier.addClub('Sports Club', 2);
+        notifier.addClub('Music Club', 2);
+        final thirdAdd = notifier.addClub('Debate & MUN Club', 2);
+
+        expect(thirdAdd, isFalse);
+        expect(container.read(clubRankingProvider), ['Sports Club', 'Music Club']);
+      });
+
+      test('respects a DIFFERENT cap for a Grade 11/12-sized band', () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final notifier = container.read(clubRankingProvider.notifier);
+
+        expect(notifier.addClub('Sports Club', 3), isTrue);
+        expect(notifier.addClub('Music Club', 3), isTrue);
+        expect(notifier.addClub('Debate & MUN Club', 3), isTrue);
+        expect(notifier.addClub('Art & Design Studio', 3), isFalse);
+        expect(container.read(clubRankingProvider), hasLength(3));
+      });
+
+      test('is a no-op if the club is already ranked (defense-in-depth)', () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final notifier = container.read(clubRankingProvider.notifier);
+
+        notifier.addClub('Sports Club', 2);
+        final dup = notifier.addClub('Sports Club', 2);
+
+        expect(dup, isFalse);
+        expect(container.read(clubRankingProvider), ['Sports Club']);
+      });
+    });
+
+    test('removeClub splices out the entry at the given index', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(clubRankingProvider.notifier);
+      notifier.addClub('Sports Club', 3);
+      notifier.addClub('Music Club', 3);
+      notifier.addClub('Debate & MUN Club', 3);
+
+      notifier.removeClub(1);
+
+      expect(container.read(clubRankingProvider),
+          ['Sports Club', 'Debate & MUN Club']);
+    });
+
+    group('moveUp / moveDown', () {
+      test('moveUp swaps with the previous entry', () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final notifier = container.read(clubRankingProvider.notifier);
+        notifier.addClub('Sports Club', 3);
+        notifier.addClub('Music Club', 3);
+
+        notifier.moveUp(1);
+
+        expect(container.read(clubRankingProvider), ['Music Club', 'Sports Club']);
+      });
+
+      test('moveUp at index 0 is a no-op', () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final notifier = container.read(clubRankingProvider.notifier);
+        notifier.addClub('Sports Club', 2);
+        notifier.addClub('Music Club', 2);
+
+        notifier.moveUp(0);
+
+        expect(container.read(clubRankingProvider), ['Sports Club', 'Music Club']);
+      });
+
+      test('moveDown swaps with the next entry', () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final notifier = container.read(clubRankingProvider.notifier);
+        notifier.addClub('Sports Club', 3);
+        notifier.addClub('Music Club', 3);
+
+        notifier.moveDown(0);
+
+        expect(container.read(clubRankingProvider), ['Music Club', 'Sports Club']);
+      });
+
+      test('moveDown at the last index is a no-op', () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final notifier = container.read(clubRankingProvider.notifier);
+        notifier.addClub('Sports Club', 2);
+        notifier.addClub('Music Club', 2);
+
+        notifier.moveDown(1);
+
+        expect(container.read(clubRankingProvider), ['Sports Club', 'Music Club']);
+      });
+    });
+
+    group('reorder', () {
+      test('moving an earlier entry later re-inserts correctly', () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final notifier = container.read(clubRankingProvider.notifier);
+        notifier.addClub('A', 3);
+        notifier.addClub('B', 3);
+        notifier.addClub('C', 3);
+
+        notifier.reorder(0, 3); // move 'A' to the end
+
+        expect(container.read(clubRankingProvider), ['B', 'C', 'A']);
+      });
+
+      test('moving a later entry earlier re-inserts correctly', () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final notifier = container.read(clubRankingProvider.notifier);
+        notifier.addClub('A', 3);
+        notifier.addClub('B', 3);
+        notifier.addClub('C', 3);
+
+        notifier.reorder(2, 0); // move 'C' to the front
+
+        expect(container.read(clubRankingProvider), ['C', 'A', 'B']);
+      });
+    });
+
+    test('reset replaces the ranking wholesale', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(clubRankingProvider.notifier);
+      notifier.addClub('Sports Club', 2);
+
+      notifier.reset(['Music Club', 'Debate & MUN Club']);
+
+      expect(
+          container.read(clubRankingProvider), ['Music Club', 'Debate & MUN Club']);
+    });
+  });
 }
