@@ -84,6 +84,8 @@ void main() {
           session: const StudentSession(
             studentId: '2627001',
             name: 'Test Student',
+            grade: '10', // Day 4: now required — value itself is irrelevant
+            // to this test, which only checks the redirect, not clubs.
           ),
         );
     await tester.pumpAndSettle();
@@ -103,6 +105,7 @@ void main() {
           session: const StudentSession(
             studentId: '2627001',
             name: 'Test Student',
+            grade: '10',
           ),
         );
 
@@ -132,6 +135,7 @@ void main() {
           session: const StudentSession(
             studentId: '2627001',
             name: 'Test Student',
+            grade: '10',
           ),
         );
 
