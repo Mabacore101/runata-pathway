@@ -6,11 +6,13 @@ class _MockStudentRecord {
     required this.studentId,
     required this.password,
     required this.name,
+    required this.grade,
   });
 
   final String studentId;
   final String password;
   final String name;
+  final String grade;
 }
 
 /// Local-only stand-in for the real Supabase-backed student login.
@@ -27,17 +29,25 @@ class _MockStudentRecord {
 /// sign in with during development. Swap this out for a real data source
 /// (Hive-cached roster, then eventually Supabase) whenever that becomes
 /// available — nothing above this class needs to know when that happens.
+///
+/// `grade` was added to the roster on Day 4 (see student_session.dart's doc
+/// comment) — the two seed students deliberately span both session-day
+/// bands (Grade 10 vs Grade 11/12) so both of My Clubs' grade-dependent
+/// pick counts (2 vs 3) are actually reachable by signing in during dev,
+/// not just unit-testable in isolation.
 class LocalStudentAuthRepository {
   static const _roster = [
     _MockStudentRecord(
       studentId: '2627001',
       password: '2627001',
       name: 'Aditya Pratama',
+      grade: '10', // 2-day/week band — 2 clubs to rank
     ),
     _MockStudentRecord(
       studentId: '2627002',
       password: '2627002',
       name: 'Bunga Lestari',
+      grade: '12', // 3-day/week band — 3 clubs to rank
     ),
   ];
 
@@ -60,6 +70,10 @@ class LocalStudentAuthRepository {
     }
 
     final record = matches.first;
-    return StudentSession(studentId: record.studentId, name: record.name);
+    return StudentSession(
+      studentId: record.studentId,
+      name: record.name,
+      grade: record.grade,
+    );
   }
 }
