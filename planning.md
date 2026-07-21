@@ -320,7 +320,24 @@ whether Day 4 can recover any of it, but not by rushing verification.
       been pulled from source yet — do that as part of today's prep, same
       as Day 2 deferred pulling the full `CURRICULUM` object until it was
       actually needed.
-- [ ] Rank Other Clubs (2 picks)
+- [ ] Rank Other Clubs — **grade-dependent pick count, not a flat 2**:
+      Grade 10 ranks 2 (1 scheduled + 1 backup), Grades 11/12 rank 3
+      (2 scheduled + 1 backup) — confirmed by direct source inspection
+      (`sdaysFor`: g10 has 2 session days/week, g11/12 has 3), see
+      day4-trimmed-source.md §"Read this first"
+- [ ] **Capacity engine — decision made (see day4-trimmed-source.md §"Read
+      this first" for the full reasoning):** the original site's backup
+      logic splits into two independent checks — "clash" (this student's
+      own ranked clubs don't fit their available days, driven by a static
+      teacher-schedule table) and "full" (every seat taken by *other*
+      students, which needs cohort data this local-only rebuild doesn't
+      have). **Implement clash-detection for real** — it has zero
+      cross-student dependency and is fully portable as-is. **Stub only
+      the cross-student capacity check** (`cnt`/`cap` always reports
+      "not full") until a backend exists — this is an honest consequence
+      of no other students existing yet, not faked data, since nothing
+      about the stub misrepresents what's actually being computed.
+      Revisit once Supabase/multi-student data exists.
 - [ ] Generate My Week gating (2/2 ranked required)
 - [ ] Submit flow + read-only re-entry state + Make Changes loop
 - [ ] Tests alongside each piece (per Section 7) for the club ranking gate
