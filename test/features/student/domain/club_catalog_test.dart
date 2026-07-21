@@ -58,4 +58,66 @@ void main() {
       expect(daysLabel('Nonexistent Club', ['Monday']), 'n/a');
     });
   });
+
+  group('neededPicksFor / scheduledSlotsFor — the Day 4 item 1 correction, '
+      'now feeding item 2\'s gate', () {
+    test('Grade 10 needs 2 total picks, only 1 of which schedules', () {
+      expect(neededPicksFor(ClubSessionBand.grade10), 2);
+      expect(scheduledSlotsFor(ClubSessionBand.grade10), 1);
+    });
+
+    test('Grades 11/12 need 3 total picks, 2 of which schedule', () {
+      expect(neededPicksFor(ClubSessionBand.grade1112), 3);
+      expect(scheduledSlotsFor(ClubSessionBand.grade1112), 2);
+    });
+  });
+
+  group('addableClubsFor', () {
+    test('excludes the required club even if it could otherwise run', () {
+      final pool = addableClubsFor(
+        requiredClub: 'Coding & ICT Club',
+        sessionDays: sessionDaysFor(ClubSessionBand.grade10),
+        alreadyRanked: const [],
+      );
+
+      expect(pool.contains('Coding & ICT Club'), isFalse);
+    });
+
+    test('excludes clubs already in the ranking', () {
+      final pool = addableClubsFor(
+        requiredClub: 'Coding & ICT Club',
+        sessionDays: sessionDaysFor(ClubSessionBand.grade10),
+        alreadyRanked: const ['Sports Club', 'Music Club'],
+      );
+
+      expect(pool.contains('Sports Club'), isFalse);
+      expect(pool.contains('Music Club'), isFalse);
+    });
+
+    test('excludes a club that cannot run on any of the given session days',
+        () {
+      // Art & Design Studio only runs Mon/Fri — Grade 10's session days
+      // are Mon/Tue, so it CAN appear; but on a hypothetical single-day
+      // Wednesday-only band it shouldn't.
+      final pool = addableClubsFor(
+        requiredClub: null,
+        sessionDays: const ['Wednesday'],
+        alreadyRanked: const [],
+      );
+
+      expect(pool.contains('Art & Design Studio'), isFalse);
+    });
+
+    test('result is sorted alphabetically, matching the JS pool\'s own sort',
+        () {
+      final pool = addableClubsFor(
+        requiredClub: null,
+        sessionDays: sessionDaysFor(ClubSessionBand.grade1112),
+        alreadyRanked: const [],
+      );
+
+      final sorted = [...pool]..sort();
+      expect(pool, sorted);
+    });
+  });
 }
