@@ -657,7 +657,7 @@ class _TypeBadge extends StatelessWidget {
 }
 
 class FitChip extends StatelessWidget {
-  const FitChip({required this.fit});
+  const FitChip({super.key, required this.fit});
   final FitStatus fit;
 
   @override
