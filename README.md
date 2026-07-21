@@ -15,7 +15,7 @@ on those roles.
 - [x] Day 0 — Foundation (dependencies, folder skeleton, data models, routing skeleton)
 - [x] Day 1 — Choose Role, Student Login, Homepage, sign-out
 - [x] Day 2 — Student's Profile, My Tests, My Grades
-- [ ] Day 3 — Target Universities
+- [x] Day 3 — Target Universities
 - [ ] Day 4 — My Clubs
 - [ ] Day 5 — Application Materials (part 1)
 - [ ] Day 6 — Application Materials (part 2) + remaining pieces
@@ -100,6 +100,20 @@ visible-warning validation, the repeatable Parent/Guardian list), My Tests
 progress/feedback trend logic, and the score field's input-filtering/clamp
 behavior).
 
+Day 3 adds: Target Universities, built as three tabs on one screen
+(Explore Majors / Find Universities / My Shortlist) rather than three
+separate pages, matching the original site's single-function-with-tabs
+structure. Explore Majors covers add/remove/Top-3/anchor rules (max 6
+majors, max 3 Top, exactly 1 anchor, anchor only settable on an
+already-Top major) and the per-major country picker. Find Universities
+covers the field-matching filter, the per-major shortlist cap and
+duplicate guard, and the IELTS fit-status chip — which reads the
+student's *actual* My Tests IELTS score rather than a separate stored
+value. My Shortlist covers anchor-first sort order, ANCHOR/YOURS tagging,
+delete, and notes persisting on focus-loss rather than per keystroke.
+Cascade behavior between the three tabs (e.g. deleting a major cleaning up
+its shortlisted universities) is covered at the controller level.
+
 ## Known bugs carried over from the original site
 
 The live site has a handful of quirks. Default stance is **replicate for
@@ -132,6 +146,40 @@ as silent differences:
   replicated, since that's the specific case that corrupts the average
   calculation.
 
+### Deliberate deviations from the original site (Day 3)
+
+- **Deleting a major cascades to its shortlisted universities.** Found via
+  manual QA, not planned upfront: removing a major from Explore Majors
+  left its shortlisted universities orphaned in My Shortlist, pointing at
+  a major that no longer exists — the JS's own `persistMajors()` doesn't
+  touch `U.targets` either, so this is likely present in the original
+  too, but it reads as a bug rather than a faithful quirk worth
+  replicating, so this rebuild fixes it. Scoped narrowly: only *deleting*
+  a major cascades — un-Top-marking one (while it stays in the list)
+  deliberately does not, since the student might re-Top it later and
+  losing a curated shortlist over a temporary reshuffle would be
+  needlessly punishing.
+- **Country picker on Explore Majors.** The trimmed JS reference's own
+  description text already promised "Add up to 6 majors with a target
+  country," but no picker markup appeared in the excerpt provided. Added
+  a real per-major country dropdown to close that gap, rather than
+  leaving `country` permanently stuck at its default.
+- **Save buttons (AppBar + end of My Shortlist).** Every action across all
+  three tabs already persists immediately — there's no deferred/unsaved
+  state anywhere in this feature for a Save button to actually write.
+  Added anyway, purely as a reassurance affordance: ending a review flow
+  on "just some back buttons, no Save" read as untrustworthy even though
+  nothing was ever at risk of being lost.
+- **`fitStatus`'s 4th tier is inferred, not confirmed from source.** The
+  IELTS gap > 0.5 ("Needs work") branch cuts off mid-function in the
+  trimmed JS reference. The label/tier are filled in from the CSS, which
+  already defines a `.fit-work` (amber) class, but this specific branch
+  wasn't confirmed verbatim the way the other three were.
+- **Custom-university autocomplete draws from `UNIVERSITIES` +
+  `EXTRA_UNIS` combined**, since a `UNI_CATALOG` data source the JS
+  references was never actually provided — best reconstruction available,
+  not a confirmed 1:1 match.
+
 ## Project structure
 
 ```
@@ -143,7 +191,7 @@ lib/
   features/
     auth/         — Choose Role, Login, session state (shared entry point above all roles)
     student/      — Student-role screens
-      domain/       — Hive models (Profile, Tests, Grades, curriculum data)
+      domain/       — Hive models (Profile, Tests, Grades, curriculum data, Target Universities)
       data/         — repositories wrapping Hive boxes
       application/  — Riverpod controllers (business logic, validation)
       presentation/ — screens
