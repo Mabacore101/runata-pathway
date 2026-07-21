@@ -111,8 +111,18 @@ duplicate guard, and the IELTS fit-status chip — which reads the
 student's *actual* My Tests IELTS score rather than a separate stored
 value. My Shortlist covers anchor-first sort order, ANCHOR/YOURS tagging,
 delete, and notes persisting on focus-loss rather than per keystroke.
-Cascade behavior between the three tabs (e.g. deleting a major cleaning up
-its shortlisted universities) is covered at the controller level.
+
+A dedicated cascade pass — deliberately built and tested last, on top of
+an already-verified Explore Majors/Find Universities/My Shortlist, so any
+cascade bug would be unambiguous — covers all four cross-tab interactions:
+deleting a major cleans up its shortlisted universities everywhere (a
+real bug found via manual QA, not planned upfront — see deviation below);
+un-Top-marking a major (not deleting it) deliberately does *not* cascade;
+changing the anchor mid-session updates Find Universities' default
+major/country and re-sorts My Shortlist, both confirmed end-to-end rather
+than just reasoned about; and changing a major's country leaves its
+existing shortlist untouched under the old country, with the per-major
+cap still correctly global across countries afterward.
 
 ## Known bugs carried over from the original site
 
