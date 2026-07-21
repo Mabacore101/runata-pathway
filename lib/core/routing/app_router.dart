@@ -8,6 +8,7 @@ import '../../features/auth/presentation/choose_role_screen.dart';
 import '../../features/auth/presentation/student_login_screen.dart';
 import '../../features/student/presentation/profile_screen.dart';
 import '../../features/student/presentation/grades_screen.dart';
+import '../../features/student/presentation/my_clubs_screen.dart';
 import '../../features/student/presentation/student_home_screen.dart';
 import '../../features/student/presentation/stub_screens.dart';
 import '../../features/student/presentation/target_universities_screen.dart';
@@ -33,6 +34,13 @@ class AppRoutes {
   /// `studentExploreMajors` route, which pointed at Explore Majors as its
   /// own standalone page before Find Universities existed.
   static const studentTargetUniversities = '/student/target-universities';
+
+  /// My Clubs — Day 4. Not tabbed like Target Universities: the JS's
+  /// renderClubs()/renderConfirm()/renderReturning() etc. are SUB-STATES
+  /// of one screen, not separate routes — this one route hosts all of
+  /// them, MyClubsScreen owning that sub-state internally as items 2-5
+  /// land, same as TargetUniversitiesScreen owns its tab index.
+  static const studentClubs = '/student/clubs';
 }
 
 /// Bridges auth-state changes into go_router's `refreshListenable`.
@@ -115,6 +123,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.studentTargetUniversities,
         builder: (context, state) => const TargetUniversitiesScreen(),
       ),
+      GoRoute(
+        path: AppRoutes.studentClubs,
+        builder: (context, state) => const MyClubsScreen(),
+      ),
     ],
     redirect: (context, state) {
       final isSignedIn = ref.read(authControllerProvider).isSignedIn;
@@ -127,7 +139,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           target == AppRoutes.studentProfile ||
           target == AppRoutes.studentTests ||
           target == AppRoutes.studentGrades ||
-          target == AppRoutes.studentTargetUniversities;
+          target == AppRoutes.studentTargetUniversities ||
+          target == AppRoutes.studentClubs;
 
       // Both "public-only" screens (Choose Role and the Login form itself)
       // should be skipped once a session already exists — not just Login.

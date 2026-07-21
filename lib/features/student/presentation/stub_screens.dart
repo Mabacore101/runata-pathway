@@ -42,6 +42,10 @@ class StudentPathwayStubScreen extends StatelessWidget {
             onPressed: () => context.push(AppRoutes.studentTargetUniversities),
             child: const Text('Preview: Target Universities'),
           ),
+          OutlinedButton(
+            onPressed: () => context.push(AppRoutes.studentClubs),
+            child: const Text('Preview: My Clubs'),
+          ),
         ],
       );
 }
