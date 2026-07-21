@@ -107,6 +107,21 @@ void main() {
     required String grade,
     StudentMajorsSettings? initialSettings,
   }) async {
+    // Item 2 (Rank Other Clubs) pushed this screen's content well past the
+    // default 800x600 test surface — required-club card + description +
+    // counter + ranked tiles + backup divider + the full addable pool
+    // (~13 clubs once the required one and any ranked ones are excluded)
+    // + the Generate button. Same fix explore_majors_screen_test.dart
+    // already needed for its 17-card catalog grid, for the same reason:
+    // tester.tap() silently misses anything positioned beyond the
+    // rendered surface rather than failing loudly, so an undersized
+    // viewport shows up downstream as "state never changed" instead of a
+    // clear layout error.
+    tester.view.physicalSize = const Size(1080, 4200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final box = await tester.runAsync(
       () => Hive.openBox<StudentMajorsSettings>(boxName),
     );
@@ -220,6 +235,233 @@ void main() {
       expect(find.text('Coding & ICT Club'), findsOneWidget);
       expect(find.textContaining('Tue, Wed, Fri'), findsOneWidget);
       expect(find.textContaining('Mon, Tue'), findsNothing);
+    });
+  });
+
+  group('Rank Other Clubs (item 2) — grade-dependent pick count', () {
+    testWidgets('the required club itself is never offered in the pool',
+        (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'my_clubs_rank_pool_excludes_required',
+          grade: '10',
+          initialSettings: StudentMajorsSettings(majors: [
+            MajorEntry(major: 'Computer Science', top: true, anchor: true),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('+ Coding & ICT Club'), findsNothing);
+    });
+
+    testWidgets(
+        'Grade 10: adding 2 clubs fills the ranking and enables Generate '
+        'my week', (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'my_clubs_rank_grade10_full',
+          grade: '10',
+          initialSettings: StudentMajorsSettings(majors: [
+            MajorEntry(major: 'Computer Science', top: true, anchor: true),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ranked 0/2'), findsOneWidget);
+      final generateButton =
+          find.widgetWithText(ElevatedButton, 'Generate my week →');
+      expect(tester.widget<ElevatedButton>(generateButton).onPressed, isNull);
+
+      await tester.tap(find.text('+ Sports Club'));
+      await tester.pumpAndSettle();
+      expect(find.text('Ranked 1/2'), findsOneWidget);
+      expect(tester.widget<ElevatedButton>(generateButton).onPressed, isNull);
+
+      await tester.tap(find.text('+ Music Club'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ranked 2/2'), findsOneWidget);
+      expect(
+          tester.widget<ElevatedButton>(generateButton).onPressed, isNotNull);
+    });
+
+    testWidgets(
+        'Grade 11/12: the same 2 clubs that fill Grade 10 are NOT enough '
+        'here — needs a 3rd (the whole point of the grade-dependent fix)',
+        (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'my_clubs_rank_grade12_full',
+          grade: '12',
+          initialSettings: StudentMajorsSettings(majors: [
+            MajorEntry(major: 'Computer Science', top: true, anchor: true),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ranked 0/3'), findsOneWidget);
+
+      await tester.tap(find.text('+ Sports Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Music Club'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ranked 2/3'), findsOneWidget);
+      final generateButton =
+          find.widgetWithText(ElevatedButton, 'Generate my week →');
+      expect(tester.widget<ElevatedButton>(generateButton).onPressed, isNull);
+
+      await tester.tap(find.text('+ Debate & MUN Club'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ranked 3/3'), findsOneWidget);
+      expect(
+          tester.widget<ElevatedButton>(generateButton).onPressed, isNotNull);
+    });
+
+    testWidgets(
+        'Grade 10 labels the 1st ranked club CHOICE 2 and the 2nd BACKUP '
+        '(only 1 scheduled slot beyond the required club)', (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'my_clubs_rank_grade10_labels',
+          grade: '10',
+          initialSettings: StudentMajorsSettings(majors: [
+            MajorEntry(major: 'Computer Science', top: true, anchor: true),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('+ Sports Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Music Club'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('CHOICE 2'), findsOneWidget);
+      expect(find.text('BACKUP'), findsOneWidget);
+      expect(find.text('BACKUP — USED ONLY IF A CHOICE ABOVE IS FULL'),
+          findsOneWidget);
+    });
+
+    testWidgets(
+        'Grade 11/12 labels the first TWO ranked clubs CHOICE 2/CHOICE 3 — '
+        'only the 3rd is BACKUP', (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'my_clubs_rank_grade12_labels',
+          grade: '12',
+          initialSettings: StudentMajorsSettings(majors: [
+            MajorEntry(major: 'Computer Science', top: true, anchor: true),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('+ Sports Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Music Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Debate & MUN Club'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('CHOICE 2'), findsOneWidget);
+      expect(find.text('CHOICE 3'), findsOneWidget);
+      expect(find.text('BACKUP'), findsOneWidget);
+    });
+
+    testWidgets(
+        'removing a ranked club decrements the count and disables the gate '
+        'again', (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'my_clubs_rank_remove',
+          grade: '10',
+          initialSettings: StudentMajorsSettings(majors: [
+            MajorEntry(major: 'Computer Science', top: true, anchor: true),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('+ Sports Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Music Club'));
+      await tester.pumpAndSettle();
+      expect(find.text('Ranked 2/2'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.close).first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ranked 1/2'), findsOneWidget);
+      final generateButton =
+          find.widgetWithText(ElevatedButton, 'Generate my week →');
+      expect(tester.widget<ElevatedButton>(generateButton).onPressed, isNull);
+    });
+
+    testWidgets(
+        'moving the BACKUP club up (via the ▲ button) promotes it into a '
+        'scheduled CHOICE slot, and bumps the previous occupant down',
+        (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'my_clubs_rank_reorder_promotes_backup',
+          grade: '12',
+          initialSettings: StudentMajorsSettings(majors: [
+            MajorEntry(major: 'Computer Science', top: true, anchor: true),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('+ Sports Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Music Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Debate & MUN Club'));
+      await tester.pumpAndSettle();
+
+      // Order so far: Sports Club (CHOICE 2), Music Club (CHOICE 3),
+      // Debate & MUN Club (BACKUP) — exactly one BACKUP tile exists.
+      expect(find.text('BACKUP'), findsOneWidget);
+
+      final debateTile = find.ancestor(
+        of: find.text('Debate & MUN Club'),
+        matching: find.byType(Container),
+      ).first;
+
+      await tester.tap(find.descendant(
+        of: debateTile,
+        matching: find.byIcon(Icons.keyboard_arrow_up),
+      ));
+      await tester.pumpAndSettle();
+
+      // Debate & MUN Club moved from index 2 to index 1 — now scheduled.
+      // `debateTile` and `musicTile` are still valid Finders here (they
+      // re-evaluate the tree lazily), even though each club's position
+      // in the list has changed since they were defined.
+      final musicTile = find.ancestor(
+        of: find.text('Music Club'),
+        matching: find.byType(Container),
+      ).first;
+      expect(
+        find.descendant(of: musicTile, matching: find.text('BACKUP')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: debateTile, matching: find.text('CHOICE 3')),
+        findsOneWidget,
+      );
     });
   });
 
