@@ -6,6 +6,7 @@ import 'package:hive_ce_test/hive_ce_test.dart';
 
 import 'package:runata_pathway/core/persistence/hive_adapter_registration.dart';
 import 'package:runata_pathway/core/persistence/hive_boxes.dart';
+import 'package:runata_pathway/features/student/application/majors_controller.dart';
 import 'package:runata_pathway/features/student/data/student_university_targets_repository.dart';
 import 'package:runata_pathway/features/student/domain/major_entry.dart';
 import 'package:runata_pathway/features/student/domain/student_majors_settings.dart';
@@ -271,5 +272,52 @@ void main() {
 
     expect(psychologyY, lessThan(csY));
     expect(csY, lessThan(lawY));
+  });
+
+  testWidgets(
+      'changing the anchor mid-session re-sorts the shortlist and moves '
+      'the Anchor tag to the new anchor major (cascade scenario 3, tested '
+      'end-to-end rather than just reasoned about)', (tester) async {
+    await tester.pumpWidget(await harness(
+      tester,
+      majors: [
+        MajorEntry(major: 'Computer Science', top: true, anchor: true),
+        MajorEntry(major: 'Law', top: true),
+      ],
+      targets: [
+        UniversityTarget(
+            id: 't1', major: 'Law', country: 'Indonesia', university: 'Uni Law'),
+        UniversityTarget(
+            id: 't2',
+            major: 'Computer Science',
+            country: 'United States',
+            university: 'Uni CS'),
+      ],
+    ));
+
+    // Computer Science is anchor initially — sorts first, carries the tag.
+    expect(find.text('★ Anchor'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Computer Science')).dy,
+      lessThan(tester.getTopLeft(find.text('Law')).dy),
+    );
+
+    final container =
+        ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+    // setAnchor does a REAL Hive write underneath (_persist -> saveSettings)
+    // — same reasoning as harness()'s Hive.openBox call: real async I/O
+    // can't complete inside testWidgets' FakeAsync zone without runAsync.
+    await tester.runAsync(
+      () => container.read(majorsControllerProvider.notifier).setAnchor(1),
+    );
+    await tester.pumpAndSettle();
+
+    // Law is now anchor — still exactly one tag, but it's moved, and Law
+    // now sorts first instead of Computer Science.
+    expect(find.text('★ Anchor'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Law')).dy,
+      lessThan(tester.getTopLeft(find.text('Computer Science')).dy),
+    );
   });
 }

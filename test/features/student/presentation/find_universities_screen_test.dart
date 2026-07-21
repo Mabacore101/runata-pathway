@@ -6,6 +6,7 @@ import 'package:hive_ce_test/hive_ce_test.dart';
 
 import 'package:runata_pathway/core/persistence/hive_adapter_registration.dart';
 import 'package:runata_pathway/core/persistence/hive_boxes.dart';
+import 'package:runata_pathway/features/student/application/majors_controller.dart';
 import 'package:runata_pathway/features/student/data/student_university_targets_repository.dart';
 import 'package:runata_pathway/features/student/domain/major_entry.dart';
 import 'package:runata_pathway/features/student/domain/student_majors_settings.dart';
@@ -255,5 +256,38 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(wentBack, isTrue);
+  });
+
+  testWidgets(
+      'changing the anchor mid-session updates the default major/country '
+      'shown here — without the student ever touching a dropdown '
+      'themselves (cascade scenario 3, tested end-to-end rather than just '
+      'reasoned about)', (tester) async {
+    await tester.pumpWidget(await harness(
+      tester,
+      majors: [
+        MajorEntry(major: 'Computer Science', country: 'United States', top: true, anchor: true),
+        MajorEntry(major: 'Law', country: 'Indonesia', top: true),
+      ],
+    ));
+
+    // No explicit dropdown selection made — the default follows whichever
+    // major is currently anchor.
+    expect(find.text('Universities for Computer Science in United States'),
+        findsOneWidget);
+
+    final container =
+        ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+    // setAnchor does a REAL Hive write underneath (_persist -> saveSettings)
+    // — same reasoning as harness()'s Hive.openBox call: real async I/O
+    // can't complete inside testWidgets' FakeAsync zone without runAsync.
+    await tester.runAsync(
+      () => container.read(majorsControllerProvider.notifier).setAnchor(1),
+    );
+    await tester.pumpAndSettle();
+
+    // The default now follows the NEW anchor (Law / Indonesia) — the
+    // student did nothing on this screen at all.
+    expect(find.text('Universities for Law in Indonesia'), findsOneWidget);
   });
 }

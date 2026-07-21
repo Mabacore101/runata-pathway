@@ -353,6 +353,44 @@ void main() {
         expect(rebuilt.read(majorsControllerProvider).majors.single.country,
             'China');
       });
+
+      test('changing a major\'s country does NOT touch universities already '
+          'shortlisted for it under the OLD country — the shortlist and its '
+          'per-major cap are unaffected by this preference changing '
+          '(cascade scenario 4, previously only reasoned about in a doc '
+          'comment, now actually exercised end-to-end)', () async {
+        final box = await Hive.openBox<StudentMajorsSettings>(
+            'majors_ctrl_country_keeps_shortlist');
+        container = buildContainer(box);
+        final majorsNotifier = container.read(majorsControllerProvider.notifier);
+        final targetsNotifier =
+            container.read(universityTargetsControllerProvider.notifier);
+
+        await majorsNotifier.addMajor('Computer Science');
+        await majorsNotifier.setCountry(0, 'United States');
+        await targetsNotifier.addTarget(
+            major: 'Computer Science', country: 'United States', university: 'Uni A');
+        await targetsNotifier.addTarget(
+            major: 'Computer Science', country: 'United States', university: 'Uni B');
+        await targetsNotifier.addTarget(
+            major: 'Computer Science', country: 'United States', university: 'Uni C');
+        expect(container.read(universityTargetsControllerProvider), hasLength(3));
+
+        // Change the major's preferred country — nothing shortlisted
+        // under the OLD country should move, disappear, or get relabeled.
+        await majorsNotifier.setCountry(0, 'Indonesia');
+
+        final targets = container.read(universityTargetsControllerProvider);
+        expect(targets, hasLength(3));
+        expect(targets.every((t) => t.country == 'United States'), isTrue);
+
+        // The per-major cap is still full — global across countries, so
+        // even adding under the NEW country should still be refused.
+        final ok = await targetsNotifier.addTarget(
+            major: 'Computer Science', country: 'Indonesia', university: 'Uni D');
+        expect(ok, isFalse);
+        expect(container.read(universityTargetsControllerProvider), hasLength(3));
+      });
     });
 
     group('setAnchor', () {
