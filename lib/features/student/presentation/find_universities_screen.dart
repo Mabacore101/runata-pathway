@@ -90,45 +90,25 @@ class _FindUniversitiesScreenState
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Universities per major',
-                    style: AppFonts.display(fontSize: 18, color: AppColors.ink),
-                  ),
-                  const SizedBox(height: 4),
-                  Text.rich(
-                    TextSpan(
-                      style: AppFonts.body(fontSize: 12.5, color: AppColors.inkSoft),
-                      children: [
-                        const TextSpan(text: 'Pick up to '),
-                        TextSpan(
-                          text: '${UniversityTargetsController.maxPerMajor}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const TextSpan(
-                          text: ' universities for each major. Tap a major to work on it.',
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+        Text(
+          'Universities per major',
+          style: AppFonts.display(fontSize: 18, color: AppColors.ink),
+        ),
+        const SizedBox(height: 4),
+        Text.rich(
+          TextSpan(
+            style: AppFonts.body(fontSize: 12.5, color: AppColors.inkSoft),
+            children: [
+              const TextSpan(text: 'Pick up to '),
+              TextSpan(
+                text: '${UniversityTargetsController.maxPerMajor}',
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-            ),
-            if (allMajorsHaveUni && widget.onReviewShortlist != null)
-              Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: ElevatedButton(
-                  onPressed: widget.onReviewShortlist,
-                  child: const Text('Next: review shortlist →'),
-                ),
+              const TextSpan(
+                text: ' universities for each major. Tap a major to work on it.',
               ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 12),
 
@@ -336,6 +316,27 @@ class _FindUniversitiesScreenState
                 child: const Text('+ Add'),
               ),
             ],
+          ),
+        const SizedBox(height: 24),
+
+        ElevatedButton(
+          onPressed: allMajorsHaveUni ? widget.onReviewShortlist : null,
+          child: const Text('Next: review shortlist →'),
+        ),
+        if (!allMajorsHaveUni)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Add at least 1 university for each of your Top majors to continue.',
+              style: AppFonts.body(fontSize: 11.5, color: AppColors.muted),
+            ),
+          ),
+        const SizedBox(height: 12),
+
+        if (widget.onGoToExploreMajors != null)
+          OutlinedButton(
+            onPressed: widget.onGoToExploreMajors,
+            child: const Text('← Previous'),
           ),
       ],
     );

@@ -91,6 +91,28 @@ class MyShortlistScreen extends ConsumerWidget {
               onNoteChanged: (note) => targetsController.updateNote(t.id, note),
             ),
 
+        // Same reassurance-only affordance as the AppBar's Save action —
+        // everything on this screen (add/remove/notes) already persists
+        // the instant it happens, so there's nothing new for this button
+        // to actually write. It exists because ending a review flow on
+        // "no explicit confirmation, just some back buttons" reads as
+        // untrustworthy even when nothing was ever at risk of being lost
+        // — a deliberate closing action here matters more than the
+        // AppBar one alone, since this is the natural "I'm done
+        // reviewing" moment in the flow.
+        const SizedBox(height: 12),
+        ElevatedButton(
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('All changes saved ✓'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          },
+          child: const Text('Save'),
+        ),
+
         if (onGoToFindUniversities != null) ...[
           const SizedBox(height: 8),
           OutlinedButton(

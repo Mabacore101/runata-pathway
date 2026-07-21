@@ -24,6 +24,29 @@ class TargetUniversitiesScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Target Universities'),
+          actions: [
+            // Every action on all 3 tabs already persists immediately —
+            // there's no deferred/unsaved state anywhere in this feature
+            // for a "Save" to actually write. This button exists purely
+            // as a reassurance affordance: tapping it doesn't change any
+            // data, it just confirms out loud that whatever's on screen
+            // is already safely stored, since "only back buttons, no
+            // Save" read as untrustworthy even though nothing was
+            // actually at risk of being lost.
+            TextButton.icon(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('All changes saved ✓'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.check_circle_outline, color: Colors.white),
+              label: const Text('Save', style: TextStyle(color: Colors.white)),
+            ),
+            const SizedBox(width: 4),
+          ],
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Explore Majors'),
