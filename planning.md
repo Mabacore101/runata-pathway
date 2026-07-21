@@ -268,23 +268,70 @@ would mostly dead-end. Revisit once those forms exist.
       `grades_screen_test.dart` — the first two were a follow-up fix after
       an initial pass only covered Grades at the widget level).
 
-**Day 3 — Target Universities (heaviest single-form logic — full day)**
-- Explore Majors (multi-select 1–6, mark-top 1–3, anchor gating)
-- Find Universities (gated on Top-marked majors, **per-major** shortlist cap of 3
-  — corrected from earlier "shared" wording after direct source inspection found
-  the cap is `targets.filter(major===current).length>=3`, keyed per major, not
-  one pooled limit across all majors — see day3-trimmed-source.md §"Read this
-  first")
-- My Shortlist (empty state, edit notes, delete, ANCHOR/YOURS tags)
-- Delete-a-major cascade logic — budget real time here, trickiest state in the app
-- Last 1–2 hrs: unit tests for anchor-clear cascade, shortlist cap enforcement
+**Day 3 — Target Universities — ✅ DONE**
+- [x] Explore Majors — multi-select up to 6, mark up to 3 as Top, exactly 1
+      anchor (must already be Top-marked). Anchor implemented as a derived
+      getter (`MajorsDerived.anchor`) over the majors list, never a
+      separately-stored field — deliberately mirrors the original site's
+      own robustness pattern (`day3-trimmed-source.md`'s "Read this first"
+      finding), so there's no cache to remember to clear.
+- [x] Find Universities — gated on 1+ Top-marked major, **per-major**
+      shortlist cap of 3 (confirmed independent per major, including via
+      test — see `university_targets_controller_test.dart`'s
+      "the per-major cap is independent per major" case)
+- [x] My Shortlist — empty state, editable notes, delete, ANCHOR/YOURS tags
+- [x] Cascade logic — `removeMajor` (anchor "free" via the derived getter,
+      no explicit clear needed), `toggleTop` (un-marking Top also clears
+      anchor on that entry — real cascade code, same handler as the JS),
+      `setAnchor` (exactly 1 at a time). All 3 covered by name-matching
+      tests (e.g. "removing the anchor major clears the derived anchor").
+- [x] Tests — controller-level coverage for all of the above, plus Hive
+      persistence round-trips
 
-**Day 4 — My Clubs (depends on Day 3 anchor major)**
-- Anchor-derived locked required club
-- Rank Other Clubs (2 picks)
-- Generate My Week gating (2/2 ranked required)
-- Submit flow + read-only re-entry state + Make Changes loop
-- Last 1–2 hrs: unit tests for club ranking gate logic
+**Real bug found only through manual device testing, not caught by the
+unit test suite:** deleting a major from Explore Majors left its
+shortlisted universities behind in My Shortlist, orphaned and pointing at
+a major that no longer existed. Fixed by cascading `removeMajor` into a
+new `UniversityTargetsController.removeAllForMajor` call — deliberately
+scoped to full deletion only, NOT triggered by un-Top-marking (a
+temporarily-untopped major might get re-promoted later; wiping its
+curated shortlist over a reshuffle would be needlessly destructive). Now
+has its own regression test, named directly after the real bug report
+rather than a generic case name, so it can't silently regress.
+
+*Process note worth carrying forward:* this is a concrete example of why
+Section 7's "test alongside each piece, not batched" rhythm isn't
+sufficient by itself — the controller-level tests were thorough and all
+passed, but the bug only surfaced once a real person used the actual app
+end-to-end. Manual device testing catches a different class of bug than
+unit tests do; neither replaces the other.
+
+*Schedule note:* this pushed past the original single-day estimate,
+confirming the plan's own "Days 3–4 are the likely time sink" flag from
+Section 8's closing risk note. The 7-day schedule now has some slip — see
+whether Day 4 can recover any of it, but not by rushing verification.
+
+**Day 4 — My Clubs — 🔜 TODO (depends on Day 3 anchor major)**
+- [ ] Anchor-derived locked required club — the original site's
+      `persistMajors()` (see `day3-trimmed-source.md` §2) computes `ranked`
+      as anchor-first-then-other-Top-3-majors, mapped through a
+      `MAJOR_CLUB` lookup table. Day 3's `MajorsDerived.anchor` getter is
+      the input this needs; the `MAJOR_CLUB` mapping table itself hasn't
+      been pulled from source yet — do that as part of today's prep, same
+      as Day 2 deferred pulling the full `CURRICULUM` object until it was
+      actually needed.
+- [ ] Rank Other Clubs (2 picks)
+- [ ] Generate My Week gating (2/2 ranked required)
+- [ ] Submit flow + read-only re-entry state + Make Changes loop
+- [ ] Tests alongside each piece (per Section 7) for the club ranking gate
+      logic — AND budget time for a real manual device pass before calling
+      any of this done, per Day 3's lesson above. Don't let controller
+      tests alone stand in for actually using the flow.
+
+**Known bug relevant here:** Section 6 lists "Clubs auto-fill from anchor
+major is broken" — confirm against the behavioral spec whether that's a
+distinct issue from the locked-required-club logic above, or the same
+mechanism, before assuming a stance.
 
 **Day 5 — Application Materials, part 1**
 - Hub shell (3 grade-level tabs × 8 sections)
