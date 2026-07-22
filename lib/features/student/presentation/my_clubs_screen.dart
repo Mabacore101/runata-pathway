@@ -68,6 +68,7 @@ class MyClubsScreen extends ConsumerWidget {
         _CurrentScheduleSection(
           submission: submission,
           band: band,
+          liveRequiredClub: requiredClub,
           onBackToHome: () => context.go(AppRoutes.studentHome),
           onMakeChanges: () => startMakingChanges(ref),
         ),
@@ -553,6 +554,14 @@ class _WeekPreviewSection extends ConsumerWidget {
       rankedOthers: ranking,
       sessionDays: sessionDaysFor(band),
     );
+    // Day 4 item 5: the cascade in ClubRankingController can silently
+    // shrink `ranking` while this screen isn't even visible (student
+    // changes anchor on a different screen, wanders back to a Preview
+    // that was left open). Same "must be full" gate item 2's Generate
+    // my week already enforces — Confirm & submit shouldn't be allowed
+    // to persist an incomplete ranking just because it happened to
+    // start full.
+    final full = ranking.length >= neededPicksFor(band);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -588,25 +597,40 @@ class _WeekPreviewSection extends ConsumerWidget {
             const SizedBox(width: 12),
             Expanded(
               child: ElevatedButton(
-                onPressed: () async {
-                  final currentAnchor =
-                      ref.read(majorsControllerProvider).anchor;
-                  // Shouldn't happen — this screen only ever renders once
-                  // anchor+requiredClub are already confirmed non-null
-                  // (MyClubsScreen's own top-level gate) — but guard
-                  // rather than force-unwrap into a crash.
-                  if (currentAnchor == null) return;
-                  await ref.read(clubSubmissionProvider.notifier).submit(
-                        anchorMajor: currentAnchor.major,
-                        rankedOthers: ref.read(clubRankingProvider),
-                      );
-                  ref.read(clubsViewProvider.notifier).showSubmitted();
-                },
+                onPressed: !full
+                    ? null
+                    : () async {
+                        final currentAnchor =
+                            ref.read(majorsControllerProvider).anchor;
+                        // Shouldn't happen — this screen only ever
+                        // renders once anchor+requiredClub are already
+                        // confirmed non-null (MyClubsScreen's own
+                        // top-level gate) — but guard rather than
+                        // force-unwrap into a crash.
+                        if (currentAnchor == null) return;
+                        await ref
+                            .read(clubSubmissionProvider.notifier)
+                            .submit(
+                              anchorMajor: currentAnchor.major,
+                              rankedOthers: ref.read(clubRankingProvider),
+                            );
+                        ref.read(clubsViewProvider.notifier).showSubmitted();
+                      },
                 child: const Text('Confirm & submit ✓'),
               ),
             ),
           ],
         ),
+        if (!full)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Your anchor changed and one of your picks was removed — '
+              "go back to Edit ranking to fill it in again before you can "
+              'submit.',
+              style: AppFonts.body(fontSize: 11.5, color: AppColors.muted),
+            ),
+          ),
       ],
     );
   }
@@ -771,16 +795,27 @@ class _DayPlanTile extends StatelessWidget {
 /// pure function makes this a cheap on-the-fly recomputation rather than
 /// needing a separately-cached "plan" the way the JS's `studentPlan`
 /// object is.
+///
+/// Day 4 item 5: [liveRequiredClub] is passed in so this can flag when
+/// the frozen submission has drifted from the CURRENT anchor — purely
+/// informational (states the fact, doesn't embed a "tap Make Changes"
+/// nudge — that button is already sitting right there on its own).
+/// Compared by CLUB, not by raw anchor major string: two different
+/// majors can map to the SAME club (e.g. Accounting and Economics both
+/// → Business & Finance Club), and swapping between those isn't actually
+/// stale — nothing about the schedule would change.
 class _CurrentScheduleSection extends StatelessWidget {
   const _CurrentScheduleSection({
     required this.submission,
     required this.band,
+    required this.liveRequiredClub,
     required this.onBackToHome,
     required this.onMakeChanges,
   });
 
   final StudentClubSelection submission;
   final ClubSessionBand band;
+  final String? liveRequiredClub;
   final VoidCallback onBackToHome;
   final VoidCallback onMakeChanges;
 
@@ -794,6 +829,12 @@ class _CurrentScheduleSection extends StatelessWidget {
             rankedOthers: submission.rankedOthers,
             sessionDays: sessionDaysFor(band),
           );
+    // Only meaningful when we actually have a valid frozen club to
+    // compare against — the red "no longer maps to a club" box below
+    // already covers the requiredClub == null case with a stronger,
+    // more specific message; stacking this banner on top of that would
+    // just be noise.
+    final isStale = requiredClub != null && requiredClub != liveRequiredClub;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -811,6 +852,30 @@ class _CurrentScheduleSection extends StatelessWidget {
           'Submitted ${formatSubmittedAt(submission.submittedAt)}.',
           style: AppFonts.body(fontSize: 13, color: AppColors.inkSoft),
         ),
+        if (isStale) ...[
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.amberSoft,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('⚠️', style: TextStyle(fontSize: 14)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Your anchor major has changed since you submitted — '
+                    'this schedule reflects your previous anchor.',
+                    style: AppFonts.body(fontSize: 12, color: AppColors.amber),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         if (preview == null)
           Container(
