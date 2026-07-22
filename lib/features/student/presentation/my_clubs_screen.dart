@@ -8,23 +8,28 @@ import '../../auth/application/auth_controller.dart';
 import '../application/clubs_controller.dart';
 import '../application/majors_controller.dart';
 import '../domain/club_catalog.dart';
+import '../domain/club_schedule_preview.dart';
 
 /// My Clubs — Pathway form 3.
 ///
-/// TODAY'S SCOPE (Day 4 item 2 of 5, building on item 1): required-club
-/// display (`requiredClubProvider`, unchanged from item 1) PLUS Rank
-/// Other Clubs — grade-dependent pick count (2 for Grade 10, 3 for Grades
-/// 11/12; day4-trimmed-source.md's "Read this first" #1), add/remove/
-/// reorder, and the "Generate my week →" gate. The "no anchor yet" state
-/// is still the flow spec's `[Anchor Major Set?]` diamond — an IN-SCREEN
+/// TODAY'S SCOPE (Day 4 item 3 of 5, building on items 1–2): required-club
+/// display and Rank Other Clubs are unchanged from before. New today:
+/// "Generate my week →" now actually switches to a real Preview/Confirm
+/// sub-view (`clubsViewProvider` — `ClubsView.ranking` vs
+/// `ClubsView.preview`, both sub-states of this ONE screen, not separate
+/// routes, per the flow spec) showing `previewClubWeek`'s output —
+/// real, per-student clash-detection in full (a student can't be in two
+/// clubs on the same day), with cross-student capacity stubbed via
+/// `alwaysHasRoomStub` until a backend exists to check real cohort seat
+/// counts against (club_schedule_preview.dart's file doc comment).
+///
+/// "Confirm & submit ✓" on the preview is still a temporary SnackBar —
+/// actually persisting the submission and the re-entry/"Make Changes"
+/// loop are item 4's scope, not today's. The "no anchor yet" state is
+/// still the flow spec's `[Anchor Major Set?]` diamond — an IN-SCREEN
 /// prompt with a button, re-evaluated fresh every time My Clubs is
 /// entered, NOT a router-level redirect like the auth guard in
 /// app_router.dart.
-///
-/// Preview/capacity (item 3) and submit/re-entry (item 4) land in later
-/// items today — "Generate my week →" is wired to a temporary SnackBar
-/// rather than real navigation until item 3's screen exists (see
-/// `_RankOtherClubsSection`'s button below).
 class MyClubsScreen extends ConsumerWidget {
   const MyClubsScreen({super.key});
 
@@ -34,6 +39,7 @@ class MyClubsScreen extends ConsumerWidget {
     final requiredClub = ref.watch(requiredClubProvider);
     final grade = ref.watch(authControllerProvider).session?.grade ?? '10';
     final band = sessionBandForGrade(grade);
+    final view = ref.watch(clubsViewProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('My Clubs')),
@@ -47,7 +53,9 @@ class MyClubsScreen extends ConsumerWidget {
                     context.push(AppRoutes.studentTargetUniversities),
                 onBackToHome: () => context.go(AppRoutes.studentHome),
               )
-            else ...[
+            else if (view == ClubsView.preview) ...[
+              _WeekPreviewSection(requiredClub: requiredClub, band: band),
+            ] else ...[
               _RequiredClubSection(
                 club: requiredClub,
                 anchorMajor: anchor.major,
@@ -370,20 +378,7 @@ class _RankOtherClubsSection extends ConsumerWidget {
           ),
         const SizedBox(height: 20),
         ElevatedButton(
-          onPressed: full
-              ? () {
-                  // TEMPORARY — item 3 (Preview/Confirm) hasn't been built
-                  // yet. This proves the gate itself works; the real
-                  // destination replaces this SnackBar with actual
-                  // navigation once that screen exists.
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content:
-                          Text('Preview & submit are coming in the next item'),
-                    ),
-                  );
-                }
-              : null,
+          onPressed: full ? () => ref.read(clubsViewProvider.notifier).showPreview() : null,
           child: const Text('Generate my week →'),
         ),
         if (!full)
@@ -489,6 +484,234 @@ class _RankedClubTile extends StatelessWidget {
             iconSize: 16,
             icon: const Icon(Icons.close),
             onPressed: onRemove,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Preview/Confirm (item 3) — shows `previewClubWeek`'s output: real,
+/// per-student clash-detection in full, cross-student capacity stubbed
+/// (see club_schedule_preview.dart's file doc comment for the exact
+/// seam). Recomputed inline on every build from the current ranking —
+/// same "always re-derive, never cache" precedent as
+/// `requiredClubProvider` and the rest of this feature, not wrapped in
+/// its own provider since it's cheap, pure, and this is the only place
+/// that reads it today.
+class _WeekPreviewSection extends ConsumerWidget {
+  const _WeekPreviewSection({
+    required this.requiredClub,
+    required this.band,
+  });
+
+  final String requiredClub;
+  final ClubSessionBand band;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ranking = ref.watch(clubRankingProvider);
+    final preview = previewClubWeek(
+      requiredClub: requiredClub,
+      rankedOthers: ranking,
+      sessionDays: sessionDaysFor(band),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text('📅', style: TextStyle(fontSize: 20)),
+            const SizedBox(width: 10),
+            Text('Your week',
+                style: AppFonts.display(fontSize: 18, color: AppColors.ink)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text('Review and confirm.',
+            style: AppFonts.body(fontSize: 13, color: AppColors.inkSoft)),
+        const SizedBox(height: 12),
+        _PreviewNote(preview: preview),
+        const SizedBox(height: 12),
+        for (final entry in preview.plan) ...[
+          _DayPlanTile(entry: entry),
+          const SizedBox(height: 8),
+        ],
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () =>
+                    ref.read(clubsViewProvider.notifier).editRanking(),
+                child: const Text('← Edit ranking'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  // TEMPORARY — item 4 (submit + re-entry) hasn't been
+                  // built yet. This proves the preview itself renders
+                  // correctly; actually persisting the submission and
+                  // enabling re-entry/"Make Changes" replaces this
+                  // SnackBar once that item lands.
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Submit is coming in the next item'),
+                    ),
+                  );
+                },
+                child: const Text('Confirm & submit ✓'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _PreviewNote extends StatelessWidget {
+  const _PreviewNote({required this.preview});
+  final ClubWeekPreview preview;
+
+  @override
+  Widget build(BuildContext context) {
+    if (preview.isPerfect) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.greenSoft,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const Text('✅', style: TextStyle(fontSize: 16)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Perfect — you got all your picks.',
+                style: AppFonts.body(
+                    weight: FontWeight.w700, fontSize: 13, color: AppColors.green),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.amberSoft,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('⚠️', style: TextStyle(fontSize: 16)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'We adjusted one of your picks:',
+                  style: AppFonts.body(
+                      weight: FontWeight.w700, fontSize: 13, color: AppColors.amber),
+                ),
+                const SizedBox(height: 4),
+                for (final s in preview.substitutions)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      _substitutionMessage(s),
+                      style: AppFonts.body(fontSize: 12.5, color: AppColors.amber),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _substitutionMessage(ClubSubstitution s) {
+    switch (s.type) {
+      case ClubSubstitutionType.swap:
+        final why = s.reason == 'full'
+            ? 'was full on your available day'
+            : 'was only on a day already taken';
+        return '${s.from} $why, so we scheduled your backup ${s.to} instead.';
+      case ClubSubstitutionType.open:
+        return "${s.from} couldn't be placed — you'll be waitlisted.";
+      case ClubSubstitutionType.requiredOverCapacity:
+        return '${s.club} (required) is over capacity — a second class will be opened.';
+    }
+  }
+}
+
+class _DayPlanTile extends StatelessWidget {
+  const _DayPlanTile({required this.entry});
+  final ClubPlanEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    late final String badgeLabel;
+    late final Color badgeColor;
+    switch (entry.kind) {
+      case ClubPlanKind.required:
+        badgeLabel = 'Required';
+        badgeColor = AppColors.teal;
+        break;
+      case ClubPlanKind.backup:
+        badgeLabel = 'Backup';
+        badgeColor = AppColors.amber;
+        break;
+      case ClubPlanKind.open:
+        badgeLabel = 'Waitlist';
+        badgeColor = AppColors.red;
+        break;
+      case ClubPlanKind.choice:
+        badgeLabel = 'Your choice';
+        badgeColor = AppColors.tealDeep;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 64,
+            child: Text(entry.day,
+                style: AppFonts.body(weight: FontWeight.w700, fontSize: 13)),
+          ),
+          Expanded(
+            child: Text(
+              entry.club ?? '${entry.fromClub ?? ''} — waitlisted',
+              style: AppFonts.body(fontSize: 13.5),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: badgeColor.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              badgeLabel,
+              style: AppFonts.mono(
+                  fontSize: 9.5, weight: FontWeight.w700, color: badgeColor),
+            ),
           ),
         ],
       ),
