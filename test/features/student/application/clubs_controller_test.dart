@@ -6,9 +6,11 @@ import 'package:hive_ce_test/hive_ce_test.dart';
 import 'package:runata_pathway/core/persistence/hive_adapter_registration.dart';
 import 'package:runata_pathway/features/student/application/clubs_controller.dart';
 import 'package:runata_pathway/features/student/application/majors_controller.dart';
+import 'package:runata_pathway/features/student/data/student_clubs_repository.dart';
 import 'package:runata_pathway/features/student/data/student_majors_repository.dart';
 import 'package:runata_pathway/features/student/data/student_university_targets_repository.dart';
 import 'package:runata_pathway/features/student/domain/major_entry.dart';
+import 'package:runata_pathway/features/student/domain/student_club_selection.dart';
 import 'package:runata_pathway/features/student/domain/student_majors_settings.dart';
 import 'package:runata_pathway/features/student/domain/university_target.dart';
 
@@ -303,19 +305,58 @@ void main() {
     });
   });
 
-  group('ClubsViewController (Day 4 item 3)', () {
-    // No Hive setup needed here either — same reasoning as
-    // ClubRankingController above: plain in-memory enum state, nothing
-    // to persist, no dependency on majorsControllerProvider.
-    test('starts on the ranking view', () {
-      final container = ProviderContainer();
+  group('ClubsViewController (Day 4 items 3–4)', () {
+    // Hive setup IS needed here now, unlike before — ClubsViewController.
+    // build() reads clubSubmissionProvider (to decide the starting view),
+    // whose own build() reads studentClubsRepositoryProvider, which needs
+    // a real, opened Box<StudentClubSelection>. Same class of gap as
+    // requiredClubProvider's removeMajor cascade needing the university-
+    // targets box even for tests that never touch a university target.
+    late Box<StudentClubSelection> clubsBox;
+
+    setUp(() async {
+      await setUpTestHive();
+      registerAdapterIfNeeded(StudentClubSelectionAdapter());
+      clubsBox = await Hive.openBox<StudentClubSelection>('clubs_view_box');
+    });
+
+    tearDown(() async => tearDownTestHive());
+
+    ProviderContainer buildContainer() {
+      return ProviderContainer(
+        overrides: [
+          studentClubsRepositoryProvider.overrideWithValue(
+            StudentClubsRepository(clubsBox),
+          ),
+        ],
+      );
+    }
+
+    test('starts on the ranking view when nothing has been submitted', () {
+      final container = buildContainer();
       addTearDown(container.dispose);
 
       expect(container.read(clubsViewProvider), ClubsView.ranking);
     });
 
+    test('starts on the currentSchedule view when a submission already exists',
+        () async {
+      await clubsBox.put(
+        'club_selection',
+        StudentClubSelection(
+          anchorMajor: 'Computer Science',
+          rankedOthers: const ['Sports Club', 'Music Club'],
+          submittedAt: DateTime(2026, 1, 1),
+        ),
+      );
+      final container = buildContainer();
+      addTearDown(container.dispose);
+
+      expect(container.read(clubsViewProvider), ClubsView.currentSchedule);
+    });
+
     test('showPreview switches to the preview view', () {
-      final container = ProviderContainer();
+      final container = buildContainer();
       addTearDown(container.dispose);
       final notifier = container.read(clubsViewProvider.notifier);
 
@@ -325,7 +366,7 @@ void main() {
     });
 
     test('editRanking switches back to the ranking view', () {
-      final container = ProviderContainer();
+      final container = buildContainer();
       addTearDown(container.dispose);
       final notifier = container.read(clubsViewProvider.notifier);
       notifier.showPreview();
@@ -335,11 +376,31 @@ void main() {
       expect(container.read(clubsViewProvider), ClubsView.ranking);
     });
 
+    test('showCurrentSchedule switches to the currentSchedule view', () {
+      final container = buildContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(clubsViewProvider.notifier);
+
+      notifier.showCurrentSchedule();
+
+      expect(container.read(clubsViewProvider), ClubsView.currentSchedule);
+    });
+
+    test('showSubmitted switches to the submitted view', () {
+      final container = buildContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(clubsViewProvider.notifier);
+
+      notifier.showSubmitted();
+
+      expect(container.read(clubsViewProvider), ClubsView.submitted);
+    });
+
     test(
         "editRanking does NOT touch clubRankingProvider's state — going "
         'back to edit should show what was already ranked, not reset it',
         () {
-      final container = ProviderContainer();
+      final container = buildContainer();
       addTearDown(container.dispose);
       final rankingNotifier = container.read(clubRankingProvider.notifier);
       final viewNotifier = container.read(clubsViewProvider.notifier);
@@ -350,6 +411,188 @@ void main() {
       viewNotifier.editRanking();
 
       expect(container.read(clubRankingProvider), ['Sports Club', 'Music Club']);
+    });
+
+    test(
+        'the starting view is NOT silently reverted when a submission '
+        "happens later — build() reads clubSubmissionProvider ONCE, not "
+        'reactively, so an explicit showSubmitted() call right after a '
+        'submit() is never clobbered by an automatic rebuild (the exact '
+        "race avoided by using ref.read instead of ref.watch in build())",
+        () async {
+      final container = buildContainer();
+      addTearDown(container.dispose);
+      expect(container.read(clubsViewProvider), ClubsView.ranking);
+
+      await container.read(clubSubmissionProvider.notifier).submit(
+            anchorMajor: 'Computer Science',
+            rankedOthers: const ['Sports Club', 'Music Club'],
+          );
+      container.read(clubsViewProvider.notifier).showSubmitted();
+
+      expect(container.read(clubsViewProvider), ClubsView.submitted);
+      // Confirms clubSubmissionProvider itself DID update (the state
+      // change genuinely happened) — it's specifically clubsViewProvider
+      // that must stay put, not that nothing changed at all.
+      expect(container.read(clubSubmissionProvider), isNotNull);
+    });
+  });
+
+  group('ClubSubmissionController (Day 4 item 4)', () {
+    late Box<StudentClubSelection> clubsBox;
+
+    setUp(() async {
+      await setUpTestHive();
+      registerAdapterIfNeeded(StudentClubSelectionAdapter());
+      clubsBox = await Hive.openBox<StudentClubSelection>('submission_box');
+    });
+
+    tearDown(() async => tearDownTestHive());
+
+    ProviderContainer buildContainer() {
+      return ProviderContainer(
+        overrides: [
+          studentClubsRepositoryProvider.overrideWithValue(
+            StudentClubsRepository(clubsBox),
+          ),
+        ],
+      );
+    }
+
+    test('starts null when nothing has been submitted', () {
+      final container = buildContainer();
+      addTearDown(container.dispose);
+
+      expect(container.read(clubSubmissionProvider), isNull);
+    });
+
+    test('submit persists a selection and updates state immediately',
+        () async {
+      final container = buildContainer();
+      addTearDown(container.dispose);
+
+      await container.read(clubSubmissionProvider.notifier).submit(
+            anchorMajor: 'Computer Science',
+            rankedOthers: const ['Sports Club', 'Music Club'],
+          );
+
+      final selection = container.read(clubSubmissionProvider);
+      expect(selection, isNotNull);
+      expect(selection!.anchorMajor, 'Computer Science');
+      expect(selection.rankedOthers, ['Sports Club', 'Music Club']);
+      expect(
+        selection.submittedAt.difference(DateTime.now()).inSeconds.abs(),
+        lessThan(5),
+      );
+    });
+
+    test('submit genuinely persists — a SEPARATE container reading the same '
+        'box sees it too, not just an in-memory illusion', () async {
+      final container1 = buildContainer();
+      addTearDown(container1.dispose);
+      await container1.read(clubSubmissionProvider.notifier).submit(
+            anchorMajor: 'Biology',
+            rankedOthers: const ['Environmental Club', 'Sports Club'],
+          );
+
+      final container2 = buildContainer();
+      addTearDown(container2.dispose);
+      final selection = container2.read(clubSubmissionProvider);
+
+      expect(selection, isNotNull);
+      expect(selection!.anchorMajor, 'Biology');
+      expect(selection.rankedOthers, ['Environmental Club', 'Sports Club']);
+    });
+
+    test('loads a pre-existing selection already in the box on a fresh '
+        'container', () async {
+      await clubsBox.put(
+        'club_selection',
+        StudentClubSelection(
+          anchorMajor: 'Psychology',
+          rankedOthers: const ['Music Club'],
+          submittedAt: DateTime(2025, 12, 25, 9, 0),
+        ),
+      );
+
+      final container = buildContainer();
+      addTearDown(container.dispose);
+      final selection = container.read(clubSubmissionProvider);
+
+      expect(selection, isNotNull);
+      expect(selection!.anchorMajor, 'Psychology');
+      expect(selection.submittedAt, DateTime(2025, 12, 25, 9, 0));
+    });
+  });
+
+  group('startMakingChanges logic (Day 4 item 4)', () {
+    // startMakingChanges itself takes a WidgetRef, which needs a real
+    // widget tree to construct — exercised end-to-end that way in
+    // my_clubs_screen_test.dart. This group instead proves the
+    // UNDERLYING state-machine steps it performs are correct, by
+    // replicating them directly against a ProviderContainer.
+    test(
+        'strips the CURRENT required club from the prior submission, '
+        'preserving the rest in order — even when the persisted ranking '
+        'defensively still contained the (old) required club itself',
+        () async {
+      final clubsBox =
+          await Hive.openBox<StudentClubSelection>('make_changes_clubs');
+      final majorsBox = await Hive.openBox<StudentMajorsSettings>(
+          'make_changes_majors');
+      final uniBox =
+          await Hive.openBox<UniversityTarget>('make_changes_uni');
+      registerAdapterIfNeeded(StudentClubSelectionAdapter());
+      registerAdapterIfNeeded(MajorEntryAdapter());
+      registerAdapterIfNeeded(StudentMajorsSettingsAdapter());
+      registerAdapterIfNeeded(UniversityTargetAdapter());
+
+      await clubsBox.put(
+        'club_selection',
+        StudentClubSelection(
+          anchorMajor: 'Computer Science',
+          rankedOthers: const [
+            'Coding & ICT Club', // the (old) required club itself —
+            // shouldn't normally end up here via real ranking, but the
+            // filter should strip it defensively regardless.
+            'Sports Club',
+            'Music Club',
+          ],
+          submittedAt: DateTime(2026, 1, 1),
+        ),
+      );
+
+      final container = ProviderContainer(overrides: [
+        studentClubsRepositoryProvider.overrideWithValue(
+          StudentClubsRepository(clubsBox),
+        ),
+        studentMajorsRepositoryProvider.overrideWithValue(
+          StudentMajorsRepository(majorsBox),
+        ),
+        studentUniversityTargetsRepositoryProvider.overrideWithValue(
+          StudentUniversityTargetsRepository(uniBox),
+        ),
+      ]);
+      addTearDown(container.dispose);
+
+      final majorsNotifier = container.read(majorsControllerProvider.notifier);
+      await majorsNotifier.addMajor('Computer Science');
+      await majorsNotifier.toggleTop(0);
+      await majorsNotifier.setAnchor(0);
+
+      // The same 5 steps startMakingChanges performs, via container.read
+      // instead of a WidgetRef.
+      final selection = container.read(clubSubmissionProvider);
+      final requiredClub = container.read(requiredClubProvider);
+      final filtered = (selection?.rankedOthers ?? const <String>[])
+          .where((c) => c != requiredClub)
+          .toList();
+      container.read(clubRankingProvider.notifier).reset(filtered);
+      container.read(clubsViewProvider.notifier).editRanking();
+
+      expect(requiredClub, 'Coding & ICT Club');
+      expect(container.read(clubRankingProvider), ['Sports Club', 'Music Club']);
+      expect(container.read(clubsViewProvider), ClubsView.ranking);
     });
   });
 }
