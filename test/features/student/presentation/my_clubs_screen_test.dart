@@ -11,9 +11,11 @@ import 'package:runata_pathway/features/auth/application/auth_controller.dart';
 import 'package:runata_pathway/features/auth/application/auth_state.dart';
 import 'package:runata_pathway/features/auth/domain/student_session.dart';
 import 'package:runata_pathway/features/student/application/majors_controller.dart';
+import 'package:runata_pathway/features/student/data/student_clubs_repository.dart';
 import 'package:runata_pathway/features/student/data/student_majors_repository.dart';
 import 'package:runata_pathway/features/student/data/student_university_targets_repository.dart';
 import 'package:runata_pathway/features/student/domain/major_entry.dart';
+import 'package:runata_pathway/features/student/domain/student_club_selection.dart';
 import 'package:runata_pathway/features/student/domain/student_majors_settings.dart';
 import 'package:runata_pathway/features/student/domain/university_target.dart';
 import 'package:runata_pathway/features/student/presentation/my_clubs_screen.dart';
@@ -37,6 +39,27 @@ class _FakeStudentMajorsRepository extends StudentMajorsRepository {
   @override
   Future<void> saveSettings(StudentMajorsSettings settings) async {
     _settings = settings;
+  }
+}
+
+/// Same rationale as [_FakeStudentMajorsRepository] — Day 4 item 4's
+/// ClubSubmissionController.submit() awaits a real repository write, which
+/// can't resolve correctly inside testWidgets' pumped frames either.
+/// Accepts a seed [StudentClubSelection] so re-entry tests can start from
+/// "already submitted" without needing to drive a full ranking+submit
+/// flow first just to get there.
+class _FakeStudentClubsRepository extends StudentClubsRepository {
+  _FakeStudentClubsRepository(super.box, [StudentClubSelection? initial])
+      : _selection = initial;
+
+  StudentClubSelection? _selection;
+
+  @override
+  StudentClubSelection? loadSelection() => _selection;
+
+  @override
+  Future<void> saveSelection(StudentClubSelection selection) async {
+    _selection = selection;
   }
 }
 
@@ -71,6 +94,13 @@ void main() {
     // place, and a 3rd registerAdapterIfNeeded call costs nothing for the
     // tests that don't need it.
     registerAdapterIfNeeded(UniversityTargetAdapter());
+    // Needed by EVERY test now, not just item 4's new ones —
+    // ClubsViewController.build() reads clubSubmissionProvider to decide
+    // its starting view, whose own build() needs this adapter registered
+    // and a real box open, regardless of whether a given test cares about
+    // submissions at all. Same class of gap as the university-targets
+    // adapter above.
+    registerAdapterIfNeeded(StudentClubSelectionAdapter());
   });
 
   tearDown(() async => tearDownTestHive());
@@ -100,12 +130,16 @@ void main() {
   /// [grade], majors state seeded via [initialSettings] (defaults to
   /// empty — no anchor), wired to a fresh throwaway Hive box (needed only
   /// to satisfy [StudentMajorsRepository]'s constructor type, per
-  /// [_FakeStudentMajorsRepository]'s doc comment).
+  /// [_FakeStudentMajorsRepository]'s doc comment). [initialSubmission]
+  /// (Day 4 item 4) seeds an already-submitted state for re-entry tests —
+  /// defaults to `null` ("never submitted"), which is what every item
+  /// 1–3 test implicitly relied on before this parameter existed.
   Future<Widget> harness(
     WidgetTester tester,
     String boxName, {
     required String grade,
     StudentMajorsSettings? initialSettings,
+    StudentClubSelection? initialSubmission,
   }) async {
     // Item 2 (Rank Other Clubs) pushed this screen's content well past the
     // default 800x600 test surface — required-club card + description +
@@ -125,11 +159,17 @@ void main() {
     final box = await tester.runAsync(
       () => Hive.openBox<StudentMajorsSettings>(boxName),
     );
+    final clubsBox = await tester.runAsync(
+      () => Hive.openBox<StudentClubSelection>('$boxName-clubs'),
+    );
 
     final container = ProviderContainer(
       overrides: [
         studentMajorsRepositoryProvider.overrideWithValue(
           _FakeStudentMajorsRepository(box!, initialSettings),
+        ),
+        studentClubsRepositoryProvider.overrideWithValue(
+          _FakeStudentClubsRepository(clubsBox!, initialSubmission),
         ),
       ],
     );
@@ -601,12 +641,13 @@ void main() {
       expect(find.text('Backup'), findsOneWidget);
     });
 
-    testWidgets('Confirm & submit shows the temporary placeholder',
+    testWidgets('Confirm & submit now actually persists and shows the '
+        'Submitted! success card, not the old placeholder SnackBar',
         (tester) async {
       await tester.pumpWidget(
         await harness(
           tester,
-          'my_clubs_preview_confirm_placeholder',
+          'my_clubs_preview_confirm_real',
           grade: '10',
           initialSettings: StudentMajorsSettings(majors: [
             MajorEntry(major: 'Computer Science', top: true, anchor: true),
@@ -625,7 +666,162 @@ void main() {
       await tester.tap(find.widgetWithText(ElevatedButton, 'Confirm & submit ✓'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Submit is coming in the next item'), findsOneWidget);
+      expect(find.text('Submit is coming in the next item'), findsNothing);
+      expect(find.text('Submitted!'), findsOneWidget);
+      expect(find.text('Thanks! Your club selection has been saved.'),
+          findsOneWidget);
+    });
+  });
+
+  group('Submit + re-entry (item 4) — full round trip', () {
+    testWidgets(
+        'entering My Clubs fresh with an EXISTING submission lands '
+        'directly on Your Current Schedule, not the ranking flow',
+        (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'my_clubs_reentry_existing',
+          grade: '10',
+          initialSettings: StudentMajorsSettings(majors: [
+            MajorEntry(major: 'Computer Science', top: true, anchor: true),
+          ]),
+          initialSubmission: StudentClubSelection(
+            anchorMajor: 'Computer Science',
+            rankedOthers: const ['Sports Club', 'Music Club'],
+            submittedAt: DateTime(2026, 1, 1, 9, 30),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Your current schedule'), findsOneWidget);
+      expect(find.text('Rank your other clubs'), findsNothing);
+      expect(find.text('Choose your anchor major first'), findsNothing);
+      expect(find.textContaining('Submitted 1 Jan 2026'), findsOneWidget);
+      expect(find.text('Coding & ICT Club'), findsOneWidget);
+      expect(find.text('Sports Club'), findsOneWidget);
+    });
+
+    testWidgets(
+        'FULL ROUND TRIP: submit → Submitted! card → back to home → '
+        're-enter shows Your Current Schedule (not Submitted! again) → '
+        'Make Changes pre-fills the exact prior picks, in order — this is '
+        'the state-transition class of bug Day 3 found that unit tests '
+        'alone missed, so it gets a dedicated end-to-end test here rather '
+        'than trusting the individual pieces in isolation', (tester) async {
+      tester.view.physicalSize = const Size(1080, 4200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final majorsBox = await tester.runAsync(
+        () => Hive.openBox<StudentMajorsSettings>('roundtrip_majors'),
+      );
+      final uniBox = await tester.runAsync(
+        () => Hive.openBox<UniversityTarget>('roundtrip_uni'),
+      );
+      final clubsBox = await tester.runAsync(
+        () => Hive.openBox<StudentClubSelection>('roundtrip_clubs'),
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          studentMajorsRepositoryProvider.overrideWithValue(
+            _FakeStudentMajorsRepository(
+              majorsBox!,
+              StudentMajorsSettings(majors: [
+                MajorEntry(major: 'Computer Science', top: true, anchor: true),
+              ]),
+            ),
+          ),
+          studentUniversityTargetsRepositoryProvider.overrideWithValue(
+            StudentUniversityTargetsRepository(uniBox!),
+          ),
+          studentClubsRepositoryProvider.overrideWithValue(
+            _FakeStudentClubsRepository(clubsBox!),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      container.read(authControllerProvider.notifier).state = AuthState(
+        session: const StudentSession(
+          studentId: '2627001',
+          name: 'Test Student',
+          grade: '10',
+        ),
+      );
+
+      // Built directly (not via harness()) so the SAME router instance
+      // can be navigated again later, to actually simulate "leaving and
+      // re-entering" rather than just checking the initial render.
+      final router = buildTestRouter();
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Rank 2 clubs (Grade 10 needs 2) and generate the preview.
+      await tester.tap(find.text('+ Sports Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Music Club'));
+      await tester.pumpAndSettle();
+      await tester
+          .tap(find.widgetWithText(ElevatedButton, 'Generate my week →'));
+      await tester.pumpAndSettle();
+
+      // Submit.
+      await tester
+          .tap(find.widgetWithText(ElevatedButton, 'Confirm & submit ✓'));
+      await tester.pumpAndSettle();
+      expect(find.text('Submitted!'), findsOneWidget);
+
+      // Leave via the one-time success card's own "Back to home".
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Back to home'));
+      await tester.pumpAndSettle();
+      expect(find.text('Home stub'), findsOneWidget);
+
+      // Re-enter My Clubs — same route, same container/state, simulating
+      // a real navigate-away-and-back within one app session.
+      router.go(AppRoutes.studentClubs);
+      await tester.pumpAndSettle();
+
+      // The actual point of this test: NOT the one-time success card
+      // again — the read-only current-schedule view.
+      expect(find.text('Submitted!'), findsNothing);
+      expect(find.text('Your current schedule'), findsOneWidget);
+      expect(find.text('Coding & ICT Club'), findsOneWidget);
+      expect(find.text('Sports Club'), findsOneWidget);
+
+      // Make changes.
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Make changes'));
+      await tester.pumpAndSettle();
+
+      // Back on the ranking screen, with BOTH prior picks intact, in the
+      // SAME order they were originally ranked — Sports Club still the
+      // scheduled choice, Music Club still the backup, not reset to
+      // empty and not shuffled.
+      expect(find.text('Rank your other clubs'), findsOneWidget);
+      expect(find.text('Ranked 2/2'), findsOneWidget);
+      final sportsTile = find.ancestor(
+        of: find.text('Sports Club'),
+        matching: find.byType(Container),
+      ).first;
+      expect(
+        find.descendant(of: sportsTile, matching: find.text('CHOICE 2')),
+        findsOneWidget,
+      );
+      final musicTile = find.ancestor(
+        of: find.text('Music Club'),
+        matching: find.byType(Container),
+      ).first;
+      expect(
+        find.descendant(of: musicTile, matching: find.text('BACKUP')),
+        findsOneWidget,
+      );
     });
   });
 
@@ -647,6 +843,12 @@ void main() {
       final uniTargetsBox = await tester.runAsync(
         () => Hive.openBox<UniversityTarget>('my_clubs_reactivity_uni_targets'),
       );
+      // Same requirement as everywhere else in this file now —
+      // ClubsViewController.build() reads clubSubmissionProvider
+      // regardless of what this specific test is exercising.
+      final clubsBox = await tester.runAsync(
+        () => Hive.openBox<StudentClubSelection>('my_clubs_reactivity_clubs'),
+      );
 
       final container = ProviderContainer(
         overrides: [
@@ -660,6 +862,9 @@ void main() {
           ),
           studentUniversityTargetsRepositoryProvider.overrideWithValue(
             StudentUniversityTargetsRepository(uniTargetsBox!),
+          ),
+          studentClubsRepositoryProvider.overrideWithValue(
+            _FakeStudentClubsRepository(clubsBox!),
           ),
         ],
       );
