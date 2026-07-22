@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/student_clubs_repository.dart';
 import '../domain/club_catalog.dart';
+import '../domain/student_club_selection.dart';
 import 'majors_controller.dart';
 
 /// My Clubs — Pathway form 3.
@@ -121,20 +123,83 @@ final clubRankingProvider =
   ClubRankingController.new,
 );
 
-/// Which sub-view My Clubs is currently showing — Day 4 item 3.
+/// The persisted submission — Day 4 item 4. `null` means "never
+/// submitted". Deliberately reads via `ref.read` in [build] (a one-time
+/// initial value), not `ref.watch` — see [ClubsViewController]'s doc
+/// comment for why: this provider's OWN state changes (via [submit])
+/// need to be something callers explicitly react to at a specific point
+/// in a transition, not something that silently reaches into and
+/// overwrites [ClubsViewController]'s state via an automatic rebuild.
+class ClubSubmissionController extends Notifier<StudentClubSelection?> {
+  @override
+  StudentClubSelection? build() {
+    return ref.read(studentClubsRepositoryProvider).loadSelection();
+  }
+
+  /// "Confirm & submit ✓" — persists [anchorMajor] (the MAJOR name, not
+  /// the club — see [StudentClubSelection]'s doc comment) and
+  /// [rankedOthers] exactly as ranked, with a fresh timestamp. Trusts the
+  /// caller to only invoke this once item 2's "Generate my week" gate has
+  /// already confirmed the ranking is full — no redundant re-validation
+  /// here, same as the rest of this feature trusting its own UI gates.
+  Future<void> submit({
+    required String anchorMajor,
+    required List<String> rankedOthers,
+  }) async {
+    final selection = StudentClubSelection(
+      anchorMajor: anchorMajor,
+      rankedOthers: [...rankedOthers],
+      submittedAt: DateTime.now(),
+    );
+    await ref.read(studentClubsRepositoryProvider).saveSelection(selection);
+    state = selection;
+  }
+}
+
+final clubSubmissionProvider =
+    NotifierProvider<ClubSubmissionController, StudentClubSelection?>(
+  ClubSubmissionController.new,
+);
+
+/// Which sub-view My Clubs is currently showing — Day 4 items 3–4.
 ///
 /// Mirrors the JS's `sstate` variable as it applies within My Clubs
-/// specifically (`"clubs"` vs `"confirm"`), kept as Riverpod state rather
-/// than local widget state for the same reason [clubRankingProvider] is:
-/// a plain `Notifier`, not autoDispose, so item 4's "Make Changes" loop
-/// can drive this same state from outside the widget tree (e.g. jumping
-/// straight back to [ClubsView.ranking] on re-entry) without needing to
-/// convert `MyClubsScreen` into a `StatefulWidget` just to hold it.
-enum ClubsView { ranking, preview }
+/// specifically (`"clubs"`/`"confirm"`/`"myschedule"`), kept as Riverpod
+/// state rather than local widget state for the same reason
+/// [clubRankingProvider] is: a plain `Notifier`, not autoDispose, so
+/// [startMakingChanges] can drive this same state from outside the
+/// widget tree without needing to convert `MyClubsScreen` into a
+/// `StatefulWidget` just to hold it.
+///
+/// [currentSchedule] is the flow spec's "Your Current Schedule" node —
+/// the ACTUAL reachable re-entry behavior (`renderMySchedule()` in the
+/// JS), not the dead `renderReturning()` function nothing ever calls
+/// (verified by grepping every `sstate=` assignment in the full source —
+/// nothing ever sets it to `"returning"`). [submitted] is the one-time
+/// "Submitted!" success card shown immediately after a fresh submit —
+/// distinct from [currentSchedule], which is what re-entry shows on
+/// every visit AFTER that first moment has passed.
+enum ClubsView { currentSchedule, ranking, preview, submitted }
 
 class ClubsViewController extends Notifier<ClubsView> {
+  /// Deliberately `ref.read`, not `ref.watch` — this decides the
+  /// STARTING view once, when the provider is first created. If this
+  /// watched `clubSubmissionProvider` instead, then every time [submit]
+  /// writes a new selection, Riverpod would rebuild THIS controller from
+  /// scratch too (since it's a declared dependency) — which would
+  /// silently reset `state` back to whatever `build()` computes
+  /// ([ClubsView.currentSchedule], now that a submission exists),
+  /// clobbering the explicit `showSubmitted()` call [submit]'s caller
+  /// makes right after, in a way that depends on exact rebuild-ordering
+  /// timing rather than being deterministic. Reading once and driving
+  /// every later transition through explicit method calls avoids that
+  /// race entirely — exactly the kind of state-transition bug this
+  /// project's Day 3 note warned unit tests alone can miss.
   @override
-  ClubsView build() => ClubsView.ranking;
+  ClubsView build() {
+    final hasSubmission = ref.read(clubSubmissionProvider) != null;
+    return hasSubmission ? ClubsView.currentSchedule : ClubsView.ranking;
+  }
 
   /// "Generate my week →" — only ever called once the ranking is full
   /// (item 2's gate already enforces that before this is reachable).
@@ -144,8 +209,44 @@ class ClubsViewController extends Notifier<ClubsView> {
   /// state at all; going back to edit should show exactly what was
   /// ranked before, not reset it.
   void editRanking() => state = ClubsView.ranking;
+
+  /// Re-entry landing state once a submission exists — see [build]'s doc
+  /// comment for the currentSchedule-vs-submitted distinction. Also
+  /// called explicitly when LEAVING the one-time [submitted] card (see
+  /// `_SubmittedSection`'s "Back to home" handler), so that returning to
+  /// My Clubs later lands here instead of showing "Submitted!" again.
+  void showCurrentSchedule() => state = ClubsView.currentSchedule;
+
+  /// The one-time post-submit success card — called by
+  /// [ClubSubmissionController.submit]'s caller immediately after a
+  /// successful submit.
+  void showSubmitted() => state = ClubsView.submitted;
 }
 
 final clubsViewProvider = NotifierProvider<ClubsViewController, ClubsView>(
   ClubsViewController.new,
 );
+
+/// "Make Changes" (item 4) — pre-fills the ranking from the prior
+/// submission, stripped of whatever the CURRENT required club is (in
+/// case the anchor changed since submitting — same defensive filter as
+/// the JS's `reEdit`/`mEdit` handlers: `ranking=(s.ranked||[])
+/// .filter(c=>c!==MAJOR_CLUB[am])`), then switches to the ranking view.
+///
+/// A plain top-level function rather than a method on any single
+/// controller, since it coordinates three: reads the persisted
+/// submission, resets [clubRankingProvider], switches [clubsViewProvider].
+/// Deliberately does NOT need to special-case "anchor is now null" the
+/// way the JS's handler does (`sstate=am?"clubs":"unipath"`) —
+/// `MyClubsScreen`'s existing top-level anchor-null gate already shows
+/// the "choose anchor first" prompt regardless of `clubsViewProvider`'s
+/// value, so switching to [ClubsView.ranking] here is sufficient; the
+/// gate above it in the widget tree handles the rest.
+void startMakingChanges(WidgetRef ref) {
+  final selection = ref.read(clubSubmissionProvider);
+  final requiredClub = ref.read(requiredClubProvider);
+  final priorRanked = selection?.rankedOthers ?? const <String>[];
+  final filtered = priorRanked.where((c) => c != requiredClub).toList();
+  ref.read(clubRankingProvider.notifier).reset(filtered);
+  ref.read(clubsViewProvider.notifier).editRanking();
+}
