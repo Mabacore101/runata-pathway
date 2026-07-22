@@ -9,27 +9,35 @@ import '../application/clubs_controller.dart';
 import '../application/majors_controller.dart';
 import '../domain/club_catalog.dart';
 import '../domain/club_schedule_preview.dart';
+import '../domain/student_club_selection.dart';
 
 /// My Clubs — Pathway form 3.
 ///
-/// TODAY'S SCOPE (Day 4 item 3 of 5, building on items 1–2): required-club
-/// display and Rank Other Clubs are unchanged from before. New today:
-/// "Generate my week →" now actually switches to a real Preview/Confirm
-/// sub-view (`clubsViewProvider` — `ClubsView.ranking` vs
-/// `ClubsView.preview`, both sub-states of this ONE screen, not separate
-/// routes, per the flow spec) showing `previewClubWeek`'s output —
-/// real, per-student clash-detection in full (a student can't be in two
-/// clubs on the same day), with cross-student capacity stubbed via
-/// `alwaysHasRoomStub` until a backend exists to check real cohort seat
-/// counts against (club_schedule_preview.dart's file doc comment).
+/// TODAY'S SCOPE (Day 4 item 4 of 5, building on items 1–3): real Hive
+/// persistence for a submission, plus the actual re-entry flow. This
+/// REPLACES what the original kickoff note assumed — `renderReturning()`
+/// (the "Welcome back… do you want to make changes?" screen) turns out
+/// to be dead code: grepping every `sstate=` assignment in the full JS
+/// source, nothing ever sets it to `"returning"`. What's ACTUALLY
+/// reachable, and independently confirmed by the behavioral spec's own
+/// flowchart ("Enter My Clubs" → "Has Submitted Before?"), is
+/// `renderMySchedule()` — a read-only "Your Current Schedule" summary
+/// shown on every re-entry once a submission exists, with "← Back to
+/// Home" / "Make Changes" both converging back into the SAME
+/// `[Anchor Major Set?]` gate items 1–3 already built.
 ///
-/// "Confirm & submit ✓" on the preview is still a temporary SnackBar —
-/// actually persisting the submission and the re-entry/"Make Changes"
-/// loop are item 4's scope, not today's. The "no anchor yet" state is
-/// still the flow spec's `[Anchor Major Set?]` diamond — an IN-SCREEN
-/// prompt with a button, re-evaluated fresh every time My Clubs is
-/// entered, NOT a router-level redirect like the auth guard in
-/// app_router.dart.
+/// `clubsViewProvider` now has 4 sub-states, not 2:
+/// [ClubsView.currentSchedule] (re-entry landing, once submitted),
+/// [ClubsView.ranking], [ClubsView.preview] (items 1–3, unchanged), and
+/// [ClubsView.submitted] — a one-time success card shown immediately
+/// after a fresh submit, distinct from [ClubsView.currentSchedule] (see
+/// `_SubmittedSection`'s "Back to home" handler for why leaving it
+/// explicitly hands off to currentSchedule rather than relying on that
+/// happening automatically). The "no anchor yet" state is still the flow
+/// spec's `[Anchor Major Set?]` diamond — an IN-SCREEN prompt, NOT a
+/// router-level redirect — but it's now checked AFTER the submitted/
+/// currentSchedule gates, matching the spec's own node ordering (has
+/// submitted, is checked before anchor status).
 class MyClubsScreen extends ConsumerWidget {
   const MyClubsScreen({super.key});
 
@@ -40,31 +48,60 @@ class MyClubsScreen extends ConsumerWidget {
     final grade = ref.watch(authControllerProvider).session?.grade ?? '10';
     final band = sessionBandForGrade(grade);
     final view = ref.watch(clubsViewProvider);
+    final submission = ref.watch(clubSubmissionProvider);
+
+    final List<Widget> children;
+    if (view == ClubsView.submitted) {
+      children = [
+        _SubmittedSection(
+          onBackToHome: () {
+            // Explicit hand-off — see class doc comment and
+            // ClubsViewController.showCurrentSchedule's own doc comment
+            // for why this can't be left implicit.
+            ref.read(clubsViewProvider.notifier).showCurrentSchedule();
+            context.go(AppRoutes.studentHome);
+          },
+        ),
+      ];
+    } else if (view == ClubsView.currentSchedule && submission != null) {
+      children = [
+        _CurrentScheduleSection(
+          submission: submission,
+          band: band,
+          onBackToHome: () => context.go(AppRoutes.studentHome),
+          onMakeChanges: () => startMakingChanges(ref),
+        ),
+      ];
+    } else if (anchor == null || requiredClub == null) {
+      children = [
+        _NoAnchorPrompt(
+          onGoToUniversities: () =>
+              context.push(AppRoutes.studentTargetUniversities),
+          onBackToHome: () => context.go(AppRoutes.studentHome),
+        ),
+      ];
+    } else if (view == ClubsView.preview) {
+      children = [
+        _WeekPreviewSection(requiredClub: requiredClub, band: band),
+      ];
+    } else {
+      children = [
+        _RequiredClubSection(
+          club: requiredClub,
+          anchorMajor: anchor.major,
+          daysLabel: daysLabel(requiredClub, sessionDaysFor(band)),
+        ),
+        const SizedBox(height: 24),
+        _RankOtherClubsSection(requiredClub: requiredClub, band: band),
+      ];
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('My Clubs')),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
-          children: [
-            if (anchor == null || requiredClub == null)
-              _NoAnchorPrompt(
-                onGoToUniversities: () =>
-                    context.push(AppRoutes.studentTargetUniversities),
-                onBackToHome: () => context.go(AppRoutes.studentHome),
-              )
-            else if (view == ClubsView.preview) ...[
-              _WeekPreviewSection(requiredClub: requiredClub, band: band),
-            ] else ...[
-              _RequiredClubSection(
-                club: requiredClub,
-                anchorMajor: anchor.major,
-                daysLabel: daysLabel(requiredClub, sessionDaysFor(band)),
-              ),
-              const SizedBox(height: 24),
-              _RankOtherClubsSection(requiredClub: requiredClub, band: band),
-            ],
-          ],
+          children: children,
         ),
       ),
     );
@@ -551,17 +588,19 @@ class _WeekPreviewSection extends ConsumerWidget {
             const SizedBox(width: 12),
             Expanded(
               child: ElevatedButton(
-                onPressed: () {
-                  // TEMPORARY — item 4 (submit + re-entry) hasn't been
-                  // built yet. This proves the preview itself renders
-                  // correctly; actually persisting the submission and
-                  // enabling re-entry/"Make Changes" replaces this
-                  // SnackBar once that item lands.
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Submit is coming in the next item'),
-                    ),
-                  );
+                onPressed: () async {
+                  final currentAnchor =
+                      ref.read(majorsControllerProvider).anchor;
+                  // Shouldn't happen — this screen only ever renders once
+                  // anchor+requiredClub are already confirmed non-null
+                  // (MyClubsScreen's own top-level gate) — but guard
+                  // rather than force-unwrap into a crash.
+                  if (currentAnchor == null) return;
+                  await ref.read(clubSubmissionProvider.notifier).submit(
+                        anchorMajor: currentAnchor.major,
+                        rankedOthers: ref.read(clubRankingProvider),
+                      );
+                  ref.read(clubsViewProvider.notifier).showSubmitted();
                 },
                 child: const Text('Confirm & submit ✓'),
               ),
@@ -717,4 +756,161 @@ class _DayPlanTile extends StatelessWidget {
       ),
     );
   }
+}
+
+/// "Your Current Schedule" (item 4) — the flow spec's actual re-entry
+/// landing state once a submission exists (`renderMySchedule()` in the
+/// JS — see class doc comment for why this replaces the dead
+/// `renderReturning()` the kickoff note originally pointed at).
+///
+/// Re-derives the week from the SUBMISSION's own frozen `anchorMajor` +
+/// `rankedOthers` — deliberately NOT from the live `requiredClubProvider`
+/// — so this always reflects exactly what was true at submission time,
+/// even if the student has since changed their anchor elsewhere without
+/// yet tapping "Make Changes" to resubmit. `previewClubWeek` being a
+/// pure function makes this a cheap on-the-fly recomputation rather than
+/// needing a separately-cached "plan" the way the JS's `studentPlan`
+/// object is.
+class _CurrentScheduleSection extends StatelessWidget {
+  const _CurrentScheduleSection({
+    required this.submission,
+    required this.band,
+    required this.onBackToHome,
+    required this.onMakeChanges,
+  });
+
+  final StudentClubSelection submission;
+  final ClubSessionBand band;
+  final VoidCallback onBackToHome;
+  final VoidCallback onMakeChanges;
+
+  @override
+  Widget build(BuildContext context) {
+    final requiredClub = requiredClubFor(submission.anchorMajor);
+    final preview = requiredClub == null
+        ? null
+        : previewClubWeek(
+            requiredClub: requiredClub,
+            rankedOthers: submission.rankedOthers,
+            sessionDays: sessionDaysFor(band),
+          );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text('✓', style: TextStyle(fontSize: 20, color: AppColors.green)),
+            const SizedBox(width: 10),
+            Text('Your current schedule',
+                style: AppFonts.display(fontSize: 18, color: AppColors.ink)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Submitted ${formatSubmittedAt(submission.submittedAt)}.',
+          style: AppFonts.body(fontSize: 13, color: AppColors.inkSoft),
+        ),
+        const SizedBox(height: 12),
+        if (preview == null)
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.redSoft,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Your submitted anchor major (${submission.anchorMajor}) no '
+              "longer maps to a club — contact your coordinator.",
+              style: AppFonts.body(fontSize: 12.5, color: AppColors.red),
+            ),
+          )
+        else
+          for (final entry in preview.plan) ...[
+            _DayPlanTile(entry: entry),
+            const SizedBox(height: 8),
+          ],
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: onBackToHome,
+                child: const Text('← Back to home'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: onMakeChanges,
+                child: const Text('Make changes'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// One-time "Submitted!" success card (item 4) — shown immediately after
+/// a fresh `Confirm & submit ✓`, distinct from [_CurrentScheduleSection]
+/// which is what every LATER re-entry shows instead. See
+/// `ClubsViewController.showCurrentSchedule`'s doc comment for why
+/// leaving this card explicitly hands off rather than relying on that
+/// happening on its own.
+class _SubmittedSection extends StatelessWidget {
+  const _SubmittedSection({required this.onBackToHome});
+
+  final VoidCallback onBackToHome;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const SizedBox(height: 24),
+        Container(
+          width: 56,
+          height: 56,
+          decoration: const BoxDecoration(
+            color: AppColors.green,
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: const Icon(Icons.check, color: Colors.white, size: 30),
+        ),
+        const SizedBox(height: 16),
+        Text('Submitted!',
+            style: AppFonts.display(fontSize: 20, color: AppColors.ink)),
+        const SizedBox(height: 8),
+        Text(
+          'Thanks! Your club selection has been saved.',
+          textAlign: TextAlign.center,
+          style: AppFonts.body(fontSize: 13.5, color: AppColors.inkSoft),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: onBackToHome,
+            child: const Text('Back to home'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Minimal manual date formatter — no `intl` dependency anywhere else in
+/// this codebase, so not introducing one here just for a submission
+/// timestamp. "22 Jul 2026, 14:05" style.
+String formatSubmittedAt(DateTime dt) {
+  const months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+  final hh = dt.hour.toString().padLeft(2, '0');
+  final mm = dt.minute.toString().padLeft(2, '0');
+  return '${dt.day} ${months[dt.month - 1]} ${dt.year}, $hh:$mm';
 }
