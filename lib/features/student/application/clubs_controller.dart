@@ -41,16 +41,35 @@ final requiredClubProvider = Provider<String?>((ref) {
 /// (e.g. once item 3's Preview screen exists, "← Edit ranking" shouldn't
 /// wipe what was already ranked) is the desired behavior.
 ///
-/// Not yet handled (deliberately out of scope until item 5): if the
-/// anchor major changes elsewhere while a ranking already exists, nothing
-/// here proactively strips out an entry that happens to match the NEW
-/// required club. `addableClubsFor` (club_catalog.dart) already prevents
-/// adding the CURRENT required club going forward, which is all item 2
-/// needs — reconciling an already-ranked entry against a changed anchor
-/// is exactly the cascade item 5 is scoped to verify.
+/// Day 4 item 5's cascade fix lives in [build] below: if the anchor major
+/// changes elsewhere (Target Universities) while a ranking already
+/// exists, and the NEW required club happens to match something already
+/// ranked, that entry gets stripped out — reactively, the instant it
+/// happens, without needing to leave and re-enter My Clubs.
+/// `addableClubsFor` (club_catalog.dart) already prevented adding the
+/// CURRENT required club going FORWARD since item 2; this closes the
+/// other half — reconciling an entry that was already ranked under a
+/// DIFFERENT, now-stale anchor.
 class ClubRankingController extends Notifier<List<String>> {
   @override
-  List<String> build() => [];
+  List<String> build() {
+    // `ref.listen`, deliberately NOT `ref.watch` — this needs to run a
+    // SIDE EFFECT (mutate this controller's own `state`) when
+    // requiredClubProvider changes, not rebuild this controller itself.
+    // `ref.watch` here would wipe `state` back to `build()`'s return
+    // value on every anchor change, discarding the rest of the ranking
+    // along with the one stale entry. Registered once, for the lifetime
+    // of this provider (this controller has no other dependencies, so
+    // `build()` itself never re-runs) — active the whole time a session
+    // has ever opened My Clubs once, including while the student is away
+    // on a completely different screen changing their anchor.
+    ref.listen<String?>(requiredClubProvider, (previous, next) {
+      if (next != null && state.contains(next)) {
+        state = state.where((c) => c != next).toList();
+      }
+    });
+    return [];
+  }
 
   /// Mirrors the JS's `data-add` handler (`ranking.length<need &&
   /// !ranking.includes(...)`). Returns `false` on either guard failing —
