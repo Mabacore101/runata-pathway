@@ -525,6 +525,126 @@ void main() {
     });
   });
 
+  group('Cascade — anchor change auto-strips a stale ranked entry '
+      '(Day 4 item 5)', () {
+    setUp(() async {
+      await setUpTestHive();
+      registerAdapterIfNeeded(MajorEntryAdapter());
+      registerAdapterIfNeeded(StudentMajorsSettingsAdapter());
+      registerAdapterIfNeeded(UniversityTargetAdapter());
+    });
+
+    tearDown(() async => tearDownTestHive());
+
+    test(
+        'the moment the required club changes to match something already '
+        'ranked, that entry is stripped — reactively, without needing to '
+        'leave and re-enter My Clubs (no My-Clubs-specific method called '
+        'here at all, only majorsControllerProvider)', () async {
+      final majorsBox =
+          await Hive.openBox<StudentMajorsSettings>('cascade_strip');
+      final container = ProviderContainer(overrides: [
+        studentMajorsRepositoryProvider.overrideWithValue(
+          StudentMajorsRepository(majorsBox),
+        ),
+      ]);
+      addTearDown(container.dispose);
+
+      final majorsNotifier =
+          container.read(majorsControllerProvider.notifier);
+      await majorsNotifier.addMajor('Computer Science');
+      await majorsNotifier.toggleTop(0);
+      await majorsNotifier.setAnchor(0);
+      expect(container.read(requiredClubProvider), 'Coding & ICT Club');
+
+      // Reading clubRankingProvider here is what activates
+      // ClubRankingController.build() — and with it, the ref.listen on
+      // requiredClubProvider that this whole test is about.
+      final rankingNotifier = container.read(clubRankingProvider.notifier);
+      rankingNotifier.addClub('Science Research Club', 2);
+      rankingNotifier.addClub('Sports Club', 2);
+      expect(container.read(clubRankingProvider),
+          ['Science Research Club', 'Sports Club']);
+
+      // Change anchor to a DIFFERENT major whose required club (Science
+      // Research Club) happens to match what's already ranked.
+      await majorsNotifier.addMajor('Biology');
+      await majorsNotifier.toggleTop(1);
+      await majorsNotifier.setAnchor(1);
+
+      expect(container.read(requiredClubProvider), 'Science Research Club');
+      expect(container.read(clubRankingProvider), ['Sports Club']);
+    });
+
+    test('does nothing if the new required club was never ranked in the '
+        'first place', () async {
+      final majorsBox =
+          await Hive.openBox<StudentMajorsSettings>('cascade_no_overlap');
+      final container = ProviderContainer(overrides: [
+        studentMajorsRepositoryProvider.overrideWithValue(
+          StudentMajorsRepository(majorsBox),
+        ),
+      ]);
+      addTearDown(container.dispose);
+
+      final majorsNotifier =
+          container.read(majorsControllerProvider.notifier);
+      await majorsNotifier.addMajor('Computer Science');
+      await majorsNotifier.toggleTop(0);
+      await majorsNotifier.setAnchor(0);
+
+      final rankingNotifier = container.read(clubRankingProvider.notifier);
+      rankingNotifier.addClub('Sports Club', 2);
+      rankingNotifier.addClub('Music Club', 2);
+
+      await majorsNotifier.addMajor('Biology');
+      await majorsNotifier.toggleTop(1);
+      await majorsNotifier.setAnchor(1);
+
+      expect(
+          container.read(clubRankingProvider), ['Sports Club', 'Music Club']);
+    });
+
+    test('clearing the anchor entirely (required club becomes null) does '
+        'not strip anything — nothing "becomes" the required club in '
+        'that case', () async {
+      final majorsBox = await Hive.openBox<StudentMajorsSettings>(
+          'cascade_anchor_cleared');
+      // removeMajor cascades into UniversityTargetsController, which
+      // unconditionally reads studentUniversityTargetsRepositoryProvider
+      // — needs a real box even though this test has no university
+      // targets to clean up. Same requirement as every other
+      // removeMajor-calling test in this file.
+      final uniBox = await Hive.openBox<UniversityTarget>(
+          'cascade_anchor_cleared_uni');
+      final container = ProviderContainer(overrides: [
+        studentMajorsRepositoryProvider.overrideWithValue(
+          StudentMajorsRepository(majorsBox),
+        ),
+        studentUniversityTargetsRepositoryProvider.overrideWithValue(
+          StudentUniversityTargetsRepository(uniBox),
+        ),
+      ]);
+      addTearDown(container.dispose);
+
+      final majorsNotifier =
+          container.read(majorsControllerProvider.notifier);
+      await majorsNotifier.addMajor('Computer Science');
+      await majorsNotifier.toggleTop(0);
+      await majorsNotifier.setAnchor(0);
+
+      final rankingNotifier = container.read(clubRankingProvider.notifier);
+      rankingNotifier.addClub('Sports Club', 2);
+      rankingNotifier.addClub('Music Club', 2);
+
+      await majorsNotifier.removeMajor(0); // clears the anchor entirely
+
+      expect(container.read(requiredClubProvider), isNull);
+      expect(
+          container.read(clubRankingProvider), ['Sports Club', 'Music Club']);
+    });
+  });
+
   group('startMakingChanges logic (Day 4 item 4)', () {
     // startMakingChanges itself takes a WidgetRef, which needs a real
     // widget tree to construct — exercised end-to-end that way in
