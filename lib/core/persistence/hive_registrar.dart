@@ -2,6 +2,7 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 
 import '../../hive_registrar.g.dart';
 import '../../features/student/domain/grade_subject_entry.dart';
+import '../../features/student/domain/student_club_selection.dart';
 import '../../features/student/domain/student_grades_settings.dart';
 import '../../features/student/domain/student_majors_settings.dart';
 import '../../features/student/domain/student_profile.dart';
@@ -37,7 +38,15 @@ import 'hive_boxes.dart';
 /// 0 StudentProfile, 1 TestEntry, 2 TestType, 3 TestStatus,
 /// 4 GradeSubjectEntry, 5 GradeSubjectGroup, 6 ParentGuardianEntry,
 /// 7 GradeTrack, 8 StudentGradesSettings, 9 MajorEntry,
-/// 10 StudentMajorsSettings, 11 UniversityTarget. Next free id is **12**.
+/// 10 StudentMajorsSettings, 11 UniversityTarget,
+/// 12 StudentClubSelection. Next free id is **13**.
+///
+/// IMPORTANT — after adding StudentClubSelection (a NEW @HiveType class),
+/// `dart run build_runner build --delete-conflicting-outputs` needs to
+/// run once to generate `student_club_selection.g.dart` AND regenerate
+/// this file's `hive_registrar.g.dart` import target so it picks up the
+/// new adapter. Nothing here compiles until that's done — same as any
+/// other new @HiveType model.
 Future<void> initHive() async {
   await Hive.initFlutter();
   Hive.registerAdapters();
@@ -49,5 +58,6 @@ Future<void> initHive() async {
     Hive.openBox<StudentGradesSettings>(HiveBoxes.studentGradesSettings),
     Hive.openBox<StudentMajorsSettings>(HiveBoxes.studentMajors),
     Hive.openBox<UniversityTarget>(HiveBoxes.studentUniversityTargets),
+    Hive.openBox<StudentClubSelection>(HiveBoxes.studentClubs),
   ]);
 }

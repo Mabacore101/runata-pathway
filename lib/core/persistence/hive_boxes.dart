@@ -22,6 +22,14 @@ class HiveBoxes {
   /// unlike the single-record boxes above, each row keys itself by its
   /// own `id`, not a shared fixed key.
   static const studentUniversityTargets = 'student_university_targets_box';
+
+  /// My Clubs' submitted selection (Day 4 item 4) — single-record box,
+  /// same pattern as [studentMajors]. One [StudentClubSelection] record
+  /// per student under [HiveKeys.studentClubSelection]; `null`/absent
+  /// means "never submitted" (see [StudentClubSelection]'s own doc
+  /// comment for why that's not defaulted to an empty instance the way
+  /// [studentGradesSettings]/[studentMajors] are).
+  static const studentClubs = 'student_clubs_box';
 }
 
 /// Fixed keys used inside boxes that hold a single record rather than a
@@ -44,4 +52,9 @@ class HiveKeys {
   /// [StudentMajorsSettings] record per student, stored under a fixed key
   /// in [HiveBoxes.studentMajors].
   static const studentMajorsSettings = 'majors_settings';
+
+  /// Same single-record pattern as [studentMajorsSettings] — one
+  /// [StudentClubSelection] record per student, stored under a fixed key
+  /// in [HiveBoxes.studentClubs].
+  static const studentClubSelection = 'club_selection';
 }

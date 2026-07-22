@@ -3,6 +3,7 @@ import 'package:hive_ce/hive_ce.dart';
 
 import '../../../core/persistence/hive_boxes.dart';
 import '../domain/grade_subject_entry.dart';
+import '../domain/student_club_selection.dart';
 import '../domain/student_grades_settings.dart';
 import '../domain/student_majors_settings.dart';
 import '../domain/student_profile.dart';
@@ -55,4 +56,10 @@ final studentMajorsSettingsBoxProvider =
 final studentUniversityTargetsBoxProvider =
     Provider<Box<UniversityTarget>>((ref) {
   return Hive.box<UniversityTarget>(HiveBoxes.studentUniversityTargets);
+});
+
+/// My Clubs' single-record submission box (Day 4 item 4) — same
+/// single-record pattern as [studentMajorsSettingsBoxProvider].
+final studentClubsBoxProvider = Provider<Box<StudentClubSelection>>((ref) {
+  return Hive.box<StudentClubSelection>(HiveBoxes.studentClubs);
 });
