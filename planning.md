@@ -159,7 +159,22 @@ These exist in the current live site's behavior. Default stance below unless ove
       since the flow spec's own "even if >100 or <0" wording aside, there's no
       real-world scenario where a negative grade is meaningful. Both the
       replicated and the deviating half are covered by tests.
-- [ ] Clubs auto-fill from anchor major is broken — relevant to Day 4.
+- [x] Clubs auto-fill from anchor major is broken — **DECIDED (Day 5 prep):
+      NOT replicated, genuinely fixed instead.** The live site's version
+      reads `studentPlan[stu.n]`, populated by the cohort-wide
+      `buildSchedule()` — whatever causes it to break there is likely a
+      multi-student-scale issue outside what this rebuild can diagnose
+      from source alone. But Day 4 already built `previewClubWeek`, which
+      computes the identical shape of data using only this student's own
+      confirmed anchor + ranked clubs (capacity correctly stubbed to
+      "always available" for a single-student rebuild). Re-running it
+      against the persisted `StudentClubSelection` gives a genuinely
+      correct auto-fill — take the win rather than replicate brokenness
+      that only exists for cohort-scale reasons this rebuild doesn't share.
+      One related simplification: the JS's `role` comes from a Staff-side
+      President/VP assignment that doesn't exist yet — default every
+      auto-filled entry's role to "Member" until Staff exists, don't
+      invent a fake assignment system.
 - [ ] "Mark as Ready" on essay/application sections can be bypassed without meeting
       criteria — relevant to Day 6.
 
@@ -311,50 +326,68 @@ confirming the plan's own "Days 3–4 are the likely time sink" flag from
 Section 8's closing risk note. The 7-day schedule now has some slip — see
 whether Day 4 can recover any of it, but not by rushing verification.
 
-**Day 4 — My Clubs — 🔜 TODO (depends on Day 3 anchor major)**
-- [ ] Anchor-derived locked required club — the original site's
-      `persistMajors()` (see `day3-trimmed-source.md` §2) computes `ranked`
-      as anchor-first-then-other-Top-3-majors, mapped through a
-      `MAJOR_CLUB` lookup table. Day 3's `MajorsDerived.anchor` getter is
-      the input this needs; the `MAJOR_CLUB` mapping table itself hasn't
-      been pulled from source yet — do that as part of today's prep, same
-      as Day 2 deferred pulling the full `CURRICULUM` object until it was
-      actually needed.
-- [ ] Rank Other Clubs — **grade-dependent pick count, not a flat 2**:
-      Grade 10 ranks 2 (1 scheduled + 1 backup), Grades 11/12 rank 3
-      (2 scheduled + 1 backup) — confirmed by direct source inspection
-      (`sdaysFor`: g10 has 2 session days/week, g11/12 has 3), see
-      day4-trimmed-source.md §"Read this first"
-- [ ] **Capacity engine — decision made (see day4-trimmed-source.md §"Read
-      this first" for the full reasoning):** the original site's backup
-      logic splits into two independent checks — "clash" (this student's
-      own ranked clubs don't fit their available days, driven by a static
-      teacher-schedule table) and "full" (every seat taken by *other*
-      students, which needs cohort data this local-only rebuild doesn't
-      have). **Implement clash-detection for real** — it has zero
-      cross-student dependency and is fully portable as-is. **Stub only
-      the cross-student capacity check** (`cnt`/`cap` always reports
-      "not full") until a backend exists — this is an honest consequence
-      of no other students existing yet, not faked data, since nothing
-      about the stub misrepresents what's actually being computed.
-      Revisit once Supabase/multi-student data exists.
-- [ ] Generate My Week gating (2/2 ranked required)
-- [ ] Submit flow + read-only re-entry state + Make Changes loop
-- [ ] Tests alongside each piece (per Section 7) for the club ranking gate
-      logic — AND budget time for a real manual device pass before calling
-      any of this done, per Day 3's lesson above. Don't let controller
-      tests alone stand in for actually using the flow.
+**Day 4 — My Clubs — ✅ DONE**
+- [x] Anchor-derived locked required club — `requiredClubProvider` reads
+      `MajorsDerived.anchor` via `ref.watch`, live/reactive, resolving
+      item 5's cascade question for free (Riverpod rebuilds every
+      listener the moment the anchor changes — no extra wiring needed)
+- [x] Rank Other Clubs — grade-dependent pick count confirmed and
+      implemented correctly (`neededPicksFor`/`scheduledSlotsFor`),
+      tested for both grade bands separately
+- [x] Capacity engine — real clash-detection implemented in full
+      (`previewClubWeek`/`club_schedule_preview.dart`), cross-student
+      capacity isolated behind one injectable function (`hasRoom`,
+      defaulting to `alwaysHasRoomStub`) exactly per the decision above —
+      confirmed nothing else in the file needs to change when real
+      cohort data eventually exists
+- [x] Generate My Week gating — enforced before "Generate my week" is
+      reachable
+- [x] Submit flow + read-only re-entry + Make Changes loop — **built
+      against a different, corrected reference than originally pointed
+      at.** day4-trimmed-source.md named `renderReturning()` as the
+      Make-Changes-loop reference; the coding chat independently grepped
+      every `sstate=` assignment in the full source and found
+      `"returning"` is never actually assigned anywhere — `renderReturning()`
+      is dead code, unreachable from any button. Verified independently
+      here (same grep, same result) before accepting it. Built against
+      the actually-reachable `renderMySchedule()` instead, cross-checked
+      against the behavioral spec's own flowchart. **Correction for any
+      future day that might reference day4-trimmed-source.md again:**
+      ignore its `renderReturning()` framing, use `renderMySchedule()`.
+- [x] Cascade logic — `ClubRankingController` uses `ref.listen` (not
+      `ref.watch`, deliberately — a side-effect on state, not a rebuild)
+      to strip a stale ranked entry the instant the anchor changes
+      elsewhere in the app. Explicitly tested, including the
+      anchor-removed-entirely edge case.
+- [x] Tests — thorough throughout, including a dedicated "Cascade" test
+      group for item 5
 
-**Known bug relevant here:** Section 6 lists "Clubs auto-fill from anchor
-major is broken" — confirm against the behavioral spec whether that's a
-distinct issue from the locked-required-club logic above, or the same
-mechanism, before assuming a stance.
+**Schedule note:** spanned two calendar days, as anticipated going in —
+this was flagged as heavier than Day 3 before starting (5 substantial
+items plus new capacity-engine complexity), not a new slip.
 
-**Day 5 — Application Materials, part 1**
-- Hub shell (3 grade-level tabs × 8 sections)
-- Student Activities Report (repeatable template; replicate broken auto-fill per bug stance)
-- Portfolio (autosave-only, live "# Works" counter)
-- Last 1–2 hrs: widget tests for form rendering/validation
+**Day 5 — Application Materials, part 1 — 🔜 TODO**
+- [ ] Hub shell — 3 grade-level tabs (confirmed correct; the JS's variable
+      is confusingly named `AYS` but its values are genuinely Gr 10/11/12,
+      not academic years — naming quirk, not a planning correction) × all
+      8 DOCS rows with status chips, though only 2 of the 8 get a real
+      screen today (the other 6 route to Day 6's `renderMatDoc`)
+- [ ] Student Activities Report — sections A/C/D/E/F as repeatable rows
+      (follow Day 2's `TestEntry`/`ParentGuardianEntry` pattern — an
+      owning record with embedded `List<T>` fields, not standalone
+      per-section repositories). Section C's eligibility rule (≥4 months
+      + proof letter) already matches the field/datatype doc exactly.
+      **Section B (auto-fill from clubs): see Section 6 above — genuinely
+      fixed via Day 4's `previewClubWeek`, not replicated as broken.**
+      `dates` field is a hardcoded literal in the original site too
+      (`"Jul 2025 – Jun 2026"`) — port as a placeholder, not a bug to
+      solve.
+- [ ] Portfolio — works list (autosave-only, live "# Works" counter),
+      maker statement, major-based suggestion banner. The
+      Portfolio-vs-Activities-Report explainer copy
+      (`portfolioInfoHTML`/`PF` data) is genuine load-bearing UX text —
+      port faithfully, not decorative filler.
+- [ ] Tests alongside each piece (per Section 7), same rhythm as Days 2–4
 
 **Day 6 — Application Materials part 2 + remaining pieces**
 - 5 shared essay sections (same template, different criteria lists; "Mark as Ready" bypass bug stance)
