@@ -120,3 +120,32 @@ final clubRankingProvider =
     NotifierProvider<ClubRankingController, List<String>>(
   ClubRankingController.new,
 );
+
+/// Which sub-view My Clubs is currently showing — Day 4 item 3.
+///
+/// Mirrors the JS's `sstate` variable as it applies within My Clubs
+/// specifically (`"clubs"` vs `"confirm"`), kept as Riverpod state rather
+/// than local widget state for the same reason [clubRankingProvider] is:
+/// a plain `Notifier`, not autoDispose, so item 4's "Make Changes" loop
+/// can drive this same state from outside the widget tree (e.g. jumping
+/// straight back to [ClubsView.ranking] on re-entry) without needing to
+/// convert `MyClubsScreen` into a `StatefulWidget` just to hold it.
+enum ClubsView { ranking, preview }
+
+class ClubsViewController extends Notifier<ClubsView> {
+  @override
+  ClubsView build() => ClubsView.ranking;
+
+  /// "Generate my week →" — only ever called once the ranking is full
+  /// (item 2's gate already enforces that before this is reachable).
+  void showPreview() => state = ClubsView.preview;
+
+  /// "← Edit ranking" — deliberately does NOT touch clubRankingProvider's
+  /// state at all; going back to edit should show exactly what was
+  /// ranked before, not reset it.
+  void editRanking() => state = ClubsView.ranking;
+}
+
+final clubsViewProvider = NotifierProvider<ClubsViewController, ClubsView>(
+  ClubsViewController.new,
+);
