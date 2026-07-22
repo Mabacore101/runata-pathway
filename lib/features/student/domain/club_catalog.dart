@@ -90,24 +90,37 @@ class _Teacher {
   final List<String> days;
 }
 
-const _allDays = ['Monday', 'Tuesday', 'Wednesday', 'Friday'];
+/// Canonical day ordering (`DAYS` in the JS) — Monday, Tuesday, Wednesday,
+/// Friday (no Thursday in this school's schedule, matching the source
+/// verbatim). Public because item 3's schedule preview needs to sort a
+/// student's assigned days back into calendar order after scheduling.
+const allSchoolDays = ['Monday', 'Tuesday', 'Wednesday', 'Friday'];
+
+/// Index of [day] within [allSchoolDays] (JS's `dayIdx`) — used purely
+/// for sorting. Unknown values sort last rather than throwing, since a
+/// bad day string here is a data bug, not something worth crashing a
+/// preview screen over.
+int dayIndex(String day) {
+  final i = allSchoolDays.indexOf(day);
+  return i == -1 ? allSchoolDays.length : i;
+}
 
 /// Which teachers are qualified for each subject track, and which days
 /// they're on campus (`TEACHERS` in the JS) — the static schedule table
 /// clash-detection is built on.
 const Map<String, List<_Teacher>> _teachers = {
-  'science': [_Teacher('Ms Gabi', _allDays), _Teacher('Ms Hertin', _allDays)],
+  'science': [_Teacher('Ms Gabi', allSchoolDays), _Teacher('Ms Hertin', allSchoolDays)],
   'social': [
-    _Teacher('Mr Ghatra', _allDays),
+    _Teacher('Mr Ghatra', allSchoolDays),
     _Teacher('Mr Yoel', ['Tuesday', 'Wednesday', 'Friday']),
-    _Teacher('Ms Sunia', _allDays),
+    _Teacher('Ms Sunia', allSchoolDays),
   ],
-  'math': [_Teacher('Ms Erni', _allDays)],
-  'ict': [_Teacher('Mr Eric', _allDays)],
-  'eng': [_Teacher('Mr Buchman', _allDays), _Teacher('Mr Adri', ['Tuesday'])],
+  'math': [_Teacher('Ms Erni', allSchoolDays)],
+  'ict': [_Teacher('Mr Eric', allSchoolDays)],
+  'eng': [_Teacher('Mr Buchman', allSchoolDays), _Teacher('Mr Adri', ['Tuesday'])],
   'art': [_Teacher('Ms Audrey', ['Monday', 'Friday'])],
-  'music': [_Teacher('Mr Hans', _allDays)],
-  'sport': [_Teacher('Ms Aswin', _allDays)],
+  'music': [_Teacher('Mr Hans', allSchoolDays)],
+  'sport': [_Teacher('Ms Aswin', allSchoolDays)],
   'bahasa': [_Teacher('Ms Desy', ['Tuesday', 'Wednesday'])],
 };
 
