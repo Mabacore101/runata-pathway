@@ -825,6 +825,273 @@ void main() {
     });
   });
 
+  group('Cascade (item 5) — anchor change reconciles an in-progress ranking',
+      () {
+    testWidgets(
+        'ranking a club that later BECOMES the new required club gets it '
+        'silently stripped, live, without navigating away from My Clubs',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 4200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final majorsBox = await tester.runAsync(
+        () => Hive.openBox<StudentMajorsSettings>('cascade_widget_strip'),
+      );
+      final uniBox = await tester.runAsync(
+        () => Hive.openBox<UniversityTarget>('cascade_widget_strip_uni'),
+      );
+      final clubsBox = await tester.runAsync(
+        () => Hive.openBox<StudentClubSelection>('cascade_widget_strip_clubs'),
+      );
+
+      final container = ProviderContainer(overrides: [
+        studentMajorsRepositoryProvider.overrideWithValue(
+          _FakeStudentMajorsRepository(
+            majorsBox!,
+            StudentMajorsSettings(majors: [
+              MajorEntry(major: 'Computer Science', top: true, anchor: true),
+            ]),
+          ),
+        ),
+        studentUniversityTargetsRepositoryProvider.overrideWithValue(
+          StudentUniversityTargetsRepository(uniBox!),
+        ),
+        studentClubsRepositoryProvider.overrideWithValue(
+          _FakeStudentClubsRepository(clubsBox!),
+        ),
+      ]);
+      addTearDown(container.dispose);
+      container.read(authControllerProvider.notifier).state = AuthState(
+        session: const StudentSession(
+          studentId: '2627001',
+          name: 'Test Student',
+          grade: '10',
+        ),
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(routerConfig: buildTestRouter()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('+ Science Research Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Sports Club'));
+      await tester.pumpAndSettle();
+      expect(find.text('Ranked 2/2'), findsOneWidget);
+
+      // Simulate changing the anchor "elsewhere" (Target Universities) —
+      // directly through the container, not through this screen's own
+      // UI, exactly like a real navigate-away-and-change would look from
+      // My Clubs' perspective (it's a different screen entirely).
+      final majorsNotifier = container.read(majorsControllerProvider.notifier);
+      await majorsNotifier.addMajor('Biology');
+      await majorsNotifier.toggleTop(1);
+      await majorsNotifier.setAnchor(1);
+      await tester.pumpAndSettle();
+
+      // Science Research Club is now the anchor's required club — it
+      // should have been silently stripped from the ranking, live, with
+      // no navigation away from and back to My Clubs at all.
+      expect(find.text('Ranked 1/2'), findsOneWidget);
+      expect(find.text('Sports Club'), findsOneWidget);
+      expect(find.text('Your required club'), findsOneWidget);
+    });
+
+    testWidgets(
+        'if the cascade shrinks an already-GENERATED preview below the '
+        'needed count, Confirm & submit disables until Edit ranking '
+        'refills it', (tester) async {
+      tester.view.physicalSize = const Size(1080, 4200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final majorsBox = await tester.runAsync(
+        () => Hive.openBox<StudentMajorsSettings>('cascade_widget_gate'),
+      );
+      final uniBox = await tester.runAsync(
+        () => Hive.openBox<UniversityTarget>('cascade_widget_gate_uni'),
+      );
+      final clubsBox = await tester.runAsync(
+        () => Hive.openBox<StudentClubSelection>('cascade_widget_gate_clubs'),
+      );
+
+      final container = ProviderContainer(overrides: [
+        studentMajorsRepositoryProvider.overrideWithValue(
+          _FakeStudentMajorsRepository(
+            majorsBox!,
+            StudentMajorsSettings(majors: [
+              MajorEntry(major: 'Computer Science', top: true, anchor: true),
+            ]),
+          ),
+        ),
+        studentUniversityTargetsRepositoryProvider.overrideWithValue(
+          StudentUniversityTargetsRepository(uniBox!),
+        ),
+        studentClubsRepositoryProvider.overrideWithValue(
+          _FakeStudentClubsRepository(clubsBox!),
+        ),
+      ]);
+      addTearDown(container.dispose);
+      container.read(authControllerProvider.notifier).state = AuthState(
+        session: const StudentSession(
+          studentId: '2627001',
+          name: 'Test Student',
+          grade: '10',
+        ),
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(routerConfig: buildTestRouter()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('+ Science Research Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Sports Club'));
+      await tester.pumpAndSettle();
+      await tester
+          .tap(find.widgetWithText(ElevatedButton, 'Generate my week →'));
+      await tester.pumpAndSettle();
+
+      final confirmButton =
+          find.widgetWithText(ElevatedButton, 'Confirm & submit ✓');
+      expect(tester.widget<ElevatedButton>(confirmButton).onPressed, isNotNull);
+
+      final majorsNotifier = container.read(majorsControllerProvider.notifier);
+      await majorsNotifier.addMajor('Biology');
+      await majorsNotifier.toggleTop(1);
+      await majorsNotifier.setAnchor(1);
+      await tester.pumpAndSettle();
+
+      // Ranking shrank from under this exact screen — Confirm & submit
+      // must not allow persisting an incomplete ranking just because it
+      // started full.
+      expect(tester.widget<ElevatedButton>(confirmButton).onPressed, isNull);
+      expect(
+        find.textContaining('go back to Edit ranking'),
+        findsOneWidget,
+      );
+
+      // Go fix it — back to ranking, refill, regenerate.
+      await tester
+          .tap(find.widgetWithText(OutlinedButton, '← Edit ranking'));
+      await tester.pumpAndSettle();
+      expect(find.text('Ranked 1/2'), findsOneWidget);
+      await tester.tap(find.text('+ Music Club'));
+      await tester.pumpAndSettle();
+      expect(find.text('Ranked 2/2'), findsOneWidget);
+      await tester
+          .tap(find.widgetWithText(ElevatedButton, 'Generate my week →'));
+      await tester.pumpAndSettle();
+
+      final confirmButtonAgain =
+          find.widgetWithText(ElevatedButton, 'Confirm & submit ✓');
+      expect(
+        tester.widget<ElevatedButton>(confirmButtonAgain).onPressed,
+        isNotNull,
+      );
+    });
+  });
+
+  group('Staleness banner (item 5) — Your Current Schedule', () {
+    testWidgets(
+        'shows an informational banner when the anchor has changed to a '
+        'DIFFERENT club since submitting — no embedded Make Changes CTA, '
+        'just states the fact', (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'my_clubs_stale_banner_shows',
+          grade: '10',
+          initialSettings: StudentMajorsSettings(majors: [
+            MajorEntry(major: 'Biology', top: true, anchor: true),
+          ]),
+          initialSubmission: StudentClubSelection(
+            anchorMajor: 'Computer Science', // frozen: Coding & ICT Club
+            rankedOthers: const ['Sports Club', 'Music Club'],
+            submittedAt: DateTime(2026, 1, 1),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Live anchor (Biology -> Science Research Club) differs from the
+      // frozen submission's (Computer Science -> Coding & ICT Club).
+      expect(
+        find.textContaining('Your anchor major has changed since you '
+            'submitted'),
+        findsOneWidget,
+      );
+      // No directive/CTA wording embedded in the banner itself.
+      expect(find.textContaining('Tap Make changes'), findsNothing);
+    });
+
+    testWidgets(
+        'does NOT show a banner when the anchor changed to a DIFFERENT '
+        'major that maps to the SAME club — nothing is actually stale',
+        (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'my_clubs_stale_banner_hidden',
+          grade: '10',
+          initialSettings: StudentMajorsSettings(majors: [
+            // Economics also maps to Business & Finance Club.
+            MajorEntry(major: 'Economics', top: true, anchor: true),
+          ]),
+          initialSubmission: StudentClubSelection(
+            anchorMajor: 'Accounting', // also -> Business & Finance Club
+            rankedOthers: const ['Sports Club', 'Music Club'],
+            submittedAt: DateTime(2026, 1, 1),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Your anchor major has changed since you '
+            'submitted'),
+        findsNothing,
+      );
+    });
+
+    testWidgets('does NOT show a banner when the anchor has not changed at '
+        'all', (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'my_clubs_stale_banner_unchanged',
+          grade: '10',
+          initialSettings: StudentMajorsSettings(majors: [
+            MajorEntry(major: 'Computer Science', top: true, anchor: true),
+          ]),
+          initialSubmission: StudentClubSelection(
+            anchorMajor: 'Computer Science',
+            rankedOthers: const ['Sports Club', 'Music Club'],
+            submittedAt: DateTime(2026, 1, 1),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Your anchor major has changed since you '
+            'submitted'),
+        findsNothing,
+      );
+    });
+  });
+
   group('reactivity — no stale cache', () {
     testWidgets(
         'clearing the anchor after the screen is already showing falls '
