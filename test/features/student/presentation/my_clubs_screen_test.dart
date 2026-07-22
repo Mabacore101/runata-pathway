@@ -465,6 +465,170 @@ void main() {
     });
   });
 
+  group('Preview/Confirm (item 3) — real clash-detection, end to end', () {
+    testWidgets(
+        'Grade 10: Generate my week shows a perfect week for an '
+        'always-available combo', (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'my_clubs_preview_grade10_perfect',
+          grade: '10',
+          initialSettings: StudentMajorsSettings(majors: [
+            MajorEntry(major: 'Computer Science', top: true, anchor: true),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('+ Sports Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Music Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Generate my week →'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Rank your other clubs'), findsNothing);
+      expect(find.text('Your week'), findsOneWidget);
+      expect(find.text('Perfect — you got all your picks.'), findsOneWidget);
+      expect(find.text('Monday'), findsOneWidget);
+      expect(find.text('Tuesday'), findsOneWidget);
+      expect(find.text('Coding & ICT Club'), findsOneWidget);
+      expect(find.text('Sports Club'), findsOneWidget);
+      expect(find.text('Required'), findsOneWidget);
+    });
+
+    testWidgets(
+        'Grade 11/12: Generate my week shows a perfect week across all 3 '
+        'days', (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'my_clubs_preview_grade12_perfect',
+          grade: '12',
+          initialSettings: StudentMajorsSettings(majors: [
+            MajorEntry(major: 'Computer Science', top: true, anchor: true),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('+ Sports Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Music Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Debate & MUN Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Generate my week →'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Perfect — you got all your picks.'), findsOneWidget);
+      expect(find.text('Tuesday'), findsOneWidget);
+      expect(find.text('Wednesday'), findsOneWidget);
+      expect(find.text('Friday'), findsOneWidget);
+      // Debate & MUN Club was ranked as backup but never needed — the
+      // real point of this test alongside the Grade 10 one above: prove
+      // the SAME "3rd pick unused" behavior holds for the larger band.
+      expect(find.text('Debate & MUN Club'), findsNothing);
+    });
+
+    testWidgets(
+        '← Edit ranking returns to the ranking view WITHOUT clearing what '
+        'was already ranked', (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'my_clubs_preview_edit_ranking',
+          grade: '10',
+          initialSettings: StudentMajorsSettings(majors: [
+            MajorEntry(major: 'Computer Science', top: true, anchor: true),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('+ Sports Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Music Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Generate my week →'));
+      await tester.pumpAndSettle();
+      expect(find.text('Your week'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(OutlinedButton, '← Edit ranking'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Rank your other clubs'), findsOneWidget);
+      expect(find.text('Your week'), findsNothing);
+      expect(find.text('Ranked 2/2'), findsOneWidget);
+    });
+
+    testWidgets(
+        'a real own-schedule clash between two ranked clubs surfaces the '
+        'adjustment banner and reassigns to backup', (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'my_clubs_preview_clash',
+          grade: '12',
+          initialSettings: StudentMajorsSettings(majors: [
+            MajorEntry(major: 'Architecture', top: true, anchor: true),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Architecture's required club (Architecture & Built Env Club) and
+      // Art & Design Studio share the same 'art' track teacher, both only
+      // available Friday for Grade 11/12 — a genuine same-day collision
+      // using real school data, same scenario proven at the algorithm
+      // level in club_schedule_preview_test.dart.
+      await tester.tap(find.text('+ Art & Design Studio'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Sports Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Music Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Generate my week →'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('We adjusted one of your picks:'), findsOneWidget);
+      // Art & Design Studio was never successfully scheduled at all (it
+      // lost the Friday collision), so it appears exactly once — in the
+      // banner's substitution message — not as a day tile anywhere.
+      expect(find.textContaining('Art & Design Studio'), findsOneWidget);
+      expect(find.textContaining('Music Club instead.'), findsOneWidget);
+      expect(find.text('Backup'), findsOneWidget);
+    });
+
+    testWidgets('Confirm & submit shows the temporary placeholder',
+        (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'my_clubs_preview_confirm_placeholder',
+          grade: '10',
+          initialSettings: StudentMajorsSettings(majors: [
+            MajorEntry(major: 'Computer Science', top: true, anchor: true),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('+ Sports Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Music Club'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Generate my week →'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Confirm & submit ✓'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Submit is coming in the next item'), findsOneWidget);
+    });
+  });
+
   group('reactivity — no stale cache', () {
     testWidgets(
         'clearing the anchor after the screen is already showing falls '
