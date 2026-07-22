@@ -30,6 +30,16 @@ class HiveBoxes {
   /// comment for why that's not defaulted to an empty instance the way
   /// [studentGradesSettings]/[studentMajors] are).
   static const studentClubs = 'student_clubs_box';
+
+  /// Student Activities Report (Day 5) — single-record box, same pattern
+  /// as [studentMajors]/[studentClubs]. One [StudentActivitiesReport]
+  /// record per student under [HiveKeys.studentActivitiesReport].
+  static const studentActivitiesReport = 'student_activities_report_box';
+
+  /// Portfolio (Day 5) — single-record box, same pattern as
+  /// [studentActivitiesReport]. One [StudentPortfolio] record per student
+  /// under [HiveKeys.studentPortfolio].
+  static const studentPortfolio = 'student_portfolio_box';
 }
 
 /// Fixed keys used inside boxes that hold a single record rather than a
@@ -57,4 +67,15 @@ class HiveKeys {
   /// [StudentClubSelection] record per student, stored under a fixed key
   /// in [HiveBoxes.studentClubs].
   static const studentClubSelection = 'club_selection';
+
+  /// Same single-record pattern as [studentClubSelection] — one
+  /// [StudentActivitiesReport] record per student, stored under a fixed
+  /// key in [HiveBoxes.studentActivitiesReport]. Deliberately holds no
+  /// Section B data — see that model's own doc comment.
+  static const studentActivitiesReport = 'activities_report';
+
+  /// Same single-record pattern as [studentActivitiesReport] — one
+  /// [StudentPortfolio] record per student, stored under a fixed key in
+  /// [HiveBoxes.studentPortfolio].
+  static const studentPortfolio = 'portfolio';
 }

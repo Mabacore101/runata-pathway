@@ -3,9 +3,11 @@ import 'package:hive_ce/hive_ce.dart';
 
 import '../../../core/persistence/hive_boxes.dart';
 import '../domain/grade_subject_entry.dart';
+import '../domain/student_activities_report.dart';
 import '../domain/student_club_selection.dart';
 import '../domain/student_grades_settings.dart';
 import '../domain/student_majors_settings.dart';
+import '../domain/student_portfolio.dart';
 import '../domain/student_profile.dart';
 import '../domain/test_entry.dart';
 import '../domain/university_target.dart';
@@ -62,4 +64,17 @@ final studentUniversityTargetsBoxProvider =
 /// single-record pattern as [studentMajorsSettingsBoxProvider].
 final studentClubsBoxProvider = Provider<Box<StudentClubSelection>>((ref) {
   return Hive.box<StudentClubSelection>(HiveBoxes.studentClubs);
+});
+
+/// Student Activities Report's single-record box (Day 5) — same
+/// single-record pattern as [studentClubsBoxProvider].
+final studentActivitiesReportBoxProvider =
+    Provider<Box<StudentActivitiesReport>>((ref) {
+  return Hive.box<StudentActivitiesReport>(HiveBoxes.studentActivitiesReport);
+});
+
+/// Portfolio's single-record box (Day 5) — same single-record pattern as
+/// [studentActivitiesReportBoxProvider].
+final studentPortfolioBoxProvider = Provider<Box<StudentPortfolio>>((ref) {
+  return Hive.box<StudentPortfolio>(HiveBoxes.studentPortfolio);
 });

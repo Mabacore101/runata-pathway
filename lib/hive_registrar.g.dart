@@ -3,26 +3,36 @@
 // Check in to version control
 
 import 'package:hive_ce/hive_ce.dart';
+import 'package:runata_pathway/features/student/domain/activity_entry.dart';
+import 'package:runata_pathway/features/student/domain/community_service_entry.dart';
 import 'package:runata_pathway/features/student/domain/grade_subject_entry.dart';
 import 'package:runata_pathway/features/student/domain/major_entry.dart';
 import 'package:runata_pathway/features/student/domain/parent_guardian_entry.dart';
+import 'package:runata_pathway/features/student/domain/portfolio_work_entry.dart';
+import 'package:runata_pathway/features/student/domain/student_activities_report.dart';
 import 'package:runata_pathway/features/student/domain/student_club_selection.dart';
 import 'package:runata_pathway/features/student/domain/student_grades_settings.dart';
 import 'package:runata_pathway/features/student/domain/student_majors_settings.dart';
+import 'package:runata_pathway/features/student/domain/student_portfolio.dart';
 import 'package:runata_pathway/features/student/domain/student_profile.dart';
 import 'package:runata_pathway/features/student/domain/test_entry.dart';
 import 'package:runata_pathway/features/student/domain/university_target.dart';
 
 extension HiveRegistrar on HiveInterface {
   void registerAdapters() {
+    registerAdapter(ActivityEntryAdapter());
+    registerAdapter(CommunityServiceEntryAdapter());
     registerAdapter(GradeSubjectEntryAdapter());
     registerAdapter(GradeSubjectGroupAdapter());
     registerAdapter(GradeTrackAdapter());
     registerAdapter(MajorEntryAdapter());
     registerAdapter(ParentGuardianEntryAdapter());
+    registerAdapter(PortfolioWorkEntryAdapter());
+    registerAdapter(StudentActivitiesReportAdapter());
     registerAdapter(StudentClubSelectionAdapter());
     registerAdapter(StudentGradesSettingsAdapter());
     registerAdapter(StudentMajorsSettingsAdapter());
+    registerAdapter(StudentPortfolioAdapter());
     registerAdapter(StudentProfileAdapter());
     registerAdapter(TestEntryAdapter());
     registerAdapter(TestStatusAdapter());
@@ -33,14 +43,19 @@ extension HiveRegistrar on HiveInterface {
 
 extension IsolatedHiveRegistrar on IsolatedHiveInterface {
   void registerAdapters() {
+    registerAdapter(ActivityEntryAdapter());
+    registerAdapter(CommunityServiceEntryAdapter());
     registerAdapter(GradeSubjectEntryAdapter());
     registerAdapter(GradeSubjectGroupAdapter());
     registerAdapter(GradeTrackAdapter());
     registerAdapter(MajorEntryAdapter());
     registerAdapter(ParentGuardianEntryAdapter());
+    registerAdapter(PortfolioWorkEntryAdapter());
+    registerAdapter(StudentActivitiesReportAdapter());
     registerAdapter(StudentClubSelectionAdapter());
     registerAdapter(StudentGradesSettingsAdapter());
     registerAdapter(StudentMajorsSettingsAdapter());
+    registerAdapter(StudentPortfolioAdapter());
     registerAdapter(StudentProfileAdapter());
     registerAdapter(TestEntryAdapter());
     registerAdapter(TestStatusAdapter());
