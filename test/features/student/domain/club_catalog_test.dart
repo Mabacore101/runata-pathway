@@ -120,4 +120,18 @@ void main() {
       expect(pool, sorted);
     });
   });
+
+  group('dayIndex / allSchoolDays', () {
+    test('matches calendar order: Monday, Tuesday, Wednesday, Friday', () {
+      expect(allSchoolDays, ['Monday', 'Tuesday', 'Wednesday', 'Friday']);
+      expect(dayIndex('Monday'), 0);
+      expect(dayIndex('Tuesday'), 1);
+      expect(dayIndex('Wednesday'), 2);
+      expect(dayIndex('Friday'), 3);
+    });
+
+    test('an unknown day sorts last rather than throwing', () {
+      expect(dayIndex('Someday'), allSchoolDays.length);
+    });
+  });
 }
