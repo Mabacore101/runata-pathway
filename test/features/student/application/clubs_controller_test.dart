@@ -302,4 +302,54 @@ void main() {
           container.read(clubRankingProvider), ['Music Club', 'Debate & MUN Club']);
     });
   });
+
+  group('ClubsViewController (Day 4 item 3)', () {
+    // No Hive setup needed here either — same reasoning as
+    // ClubRankingController above: plain in-memory enum state, nothing
+    // to persist, no dependency on majorsControllerProvider.
+    test('starts on the ranking view', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      expect(container.read(clubsViewProvider), ClubsView.ranking);
+    });
+
+    test('showPreview switches to the preview view', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(clubsViewProvider.notifier);
+
+      notifier.showPreview();
+
+      expect(container.read(clubsViewProvider), ClubsView.preview);
+    });
+
+    test('editRanking switches back to the ranking view', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(clubsViewProvider.notifier);
+      notifier.showPreview();
+
+      notifier.editRanking();
+
+      expect(container.read(clubsViewProvider), ClubsView.ranking);
+    });
+
+    test(
+        "editRanking does NOT touch clubRankingProvider's state — going "
+        'back to edit should show what was already ranked, not reset it',
+        () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final rankingNotifier = container.read(clubRankingProvider.notifier);
+      final viewNotifier = container.read(clubsViewProvider.notifier);
+      rankingNotifier.addClub('Sports Club', 2);
+      rankingNotifier.addClub('Music Club', 2);
+      viewNotifier.showPreview();
+
+      viewNotifier.editRanking();
+
+      expect(container.read(clubRankingProvider), ['Sports Club', 'Music Club']);
+    });
+  });
 }
