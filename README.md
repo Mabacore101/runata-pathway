@@ -17,7 +17,7 @@ on those roles.
 - [x] Day 2 — Student's Profile, My Tests, My Grades
 - [x] Day 3 — Target Universities
 - [x] Day 4 — My Clubs
-- [ ] Day 5 — Application Materials (part 1)
+- [x] Day 5 — Application Materials (part 1)
 - [ ] Day 6 — Application Materials (part 2) + remaining pieces
 - [ ] Day 7 — Integration, polish, device pass
 
@@ -154,6 +154,21 @@ rather than raw major name so two majors that happen to share a club
 (e.g. Accounting/Economics, both → Business & Finance Club) don't
 trigger a false positive.
 
+Day 5 adds: the Application Materials hub (grade-level tabs over all 8
+Pathway document rows, 2 of which route to real content today, the
+other 6 visibly present but inert pending Day 6), Student Activities
+Report, and Portfolio. Activities Report covers sections A/C/D/E/F as
+repeatable rows (add/delete immediate, field edits batched via Save —
+confirmed against the actual JS handlers, not assumed) and Section B's
+live wiring to Day 4's week-preview algorithm against the student's
+submitted club selection — recomputed on every visit, not cached, so
+resubmitting clubs elsewhere in the app reflects here without a
+restart. Portfolio covers the works list and maker statement, both
+autosave-on-change per the behavioral spec's explicit note for this
+screen specifically, the major-based suggestion banner, and the
+suitability table + explainer (previously dead code in the original
+site, surfaced properly here — see deviation below).
+
 ## Known bugs carried over from the original site
 
 The live site has a handful of quirks. Default stance is **replicate for
@@ -164,7 +179,6 @@ the relevant day's work:
 - My Grades — manually-typed scores above 100 aren't clamped, corrupting
   the average calculation (upper bound only — see deviation below for the
   lower bound)
-- My Clubs → Application Materials — "auto-fill from clubs" doesn't work
 - Application Materials (essay sections) — "Mark as Ready" only checks for
   non-empty text, not actual criteria
 
@@ -175,9 +189,10 @@ architectural simplifications made along the way, worth revisiting rather
 than fixed now:
 
 - **One global Hive record per data type, not per-student.** Every box
-  (Profile, Grades, Majors, University Targets, Clubs) is opened once at
-  app startup under a single fixed key — nothing in the storage layer is
-  keyed by `studentId`. Reasonable under the real single-device-per-student
+  (Profile, Grades, Majors, University Targets, Clubs, Activities Report,
+  Portfolio) is opened once at app startup under a single fixed key —
+  nothing in the storage layer is keyed by `studentId`. Reasonable under
+  the real single-device-per-student
   assumption the original site also makes (a student never signs in as
   someone else on their own phone), but it means switching between the
   two seeded test accounts on ONE dev device doesn't give a clean slate —
@@ -285,6 +300,50 @@ as silent differences:
   club (Accounting/Economics both → Business & Finance Club) don't
   trigger a false positive.
 
+### Deliberate deviations from the original site (Day 5)
+
+- **My Clubs → Application Materials auto-fill: genuinely fixed, not
+  replicated as broken.** Previously listed above as a known bug to
+  carry over. Direct inspection of Day 4's own `previewClubWeek` showed
+  the auto-fill is fixable rather than something worth reproducing
+  as-broken — Section B now calls it live against the student's
+  submitted club selection every time the screen builds, the same
+  "always re-derive, never cache" philosophy already used for My Clubs'
+  own required-club display.
+- **Activities Report's save model corrected mid-build, not assumed.**
+  Initially built against the same deferred-Save pattern as Student's
+  Profile. Tracing the actual JS handlers showed every field here
+  autosaves per keystroke in the original, with the on-screen "Save"
+  button wired to a generic, screen-agnostic flush action — not
+  specific to this form at all. Rebuilt against the closer real
+  precedent instead: row add/delete persist immediately (matching My
+  Tests), field edits batch into one `saveAll()` call.
+- **Portfolio is genuinely autosave**, confirmed directly by the
+  behavioral spec's own explicit note for this screen (unlike Activities
+  Report above, this one didn't need correcting) — every field writes
+  through on change; its "Save" button is deliberately cosmetic, same
+  reassurance-only pattern as Target Universities'.
+- **Portfolio-vs-Activities-Report explainer surfaced properly.** The
+  original site's `portfolioInfoHTML()` — the two-cards-plus-suitability-
+  table explanation of when a portfolio matters — was defined but never
+  called from anywhere reachable in the JS; genuinely dead code, not
+  just hard to find. Flagged as worth porting anyway since the copy
+  itself is real UX guidance, so it's surfaced here as a collapsed,
+  reachable section rather than left unreachable. Its closing line
+  ("Builder coming soon…") was dropped since it's no longer true — the
+  builder is what this rebuild just shipped.
+- **Grade-tab default is grade-alone, not the original's Staff-side
+  key.** The JS's `studentAY()` branches on a Staff-only "selected
+  class" concept with no equivalent in this Student-only rebuild — same
+  simplification family as `club_catalog.dart`'s `sessionBandForGrade`.
+  The student's own session grade decides the default tab directly.
+- **The 3 grade tabs don't scope Activities Report or Portfolio.**
+  Tracing the JS, both docs are keyed only by student name, never by
+  academic year — the tab only matters once Day 6's essay docs exist,
+  which genuinely do keep a separate draft per year. Worth stating
+  explicitly so switching tabs with no visible effect on either doc
+  reads as expected, not broken.
+
 ## Project structure
 
 ```
@@ -296,7 +355,7 @@ lib/
   features/
     auth/         — Choose Role, Login, session state (shared entry point above all roles)
     student/      — Student-role screens
-      domain/       — Hive models (Profile, Tests, Grades, curriculum data, Target Universities, Clubs) + pure scheduling logic (club/day data tables, week-preview algorithm)
+      domain/       — Hive models (Profile, Tests, Grades, curriculum data, Target Universities, Clubs, Application Materials) + pure scheduling logic (club/day data tables, week-preview algorithm)
       data/         — repositories wrapping Hive boxes
       application/  — Riverpod controllers (business logic, validation)
       presentation/ — screens
