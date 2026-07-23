@@ -11,11 +11,13 @@ import 'package:runata_pathway/features/auth/application/auth_controller.dart';
 import 'package:runata_pathway/features/auth/application/auth_state.dart';
 import 'package:runata_pathway/features/auth/domain/student_session.dart';
 import 'package:runata_pathway/features/student/data/student_activities_report_repository.dart';
+import 'package:runata_pathway/features/student/data/student_clubs_repository.dart';
 import 'package:runata_pathway/features/student/data/student_portfolio_repository.dart';
 import 'package:runata_pathway/features/student/domain/activity_entry.dart';
 import 'package:runata_pathway/features/student/domain/community_service_entry.dart';
 import 'package:runata_pathway/features/student/domain/portfolio_work_entry.dart';
 import 'package:runata_pathway/features/student/domain/student_activities_report.dart';
+import 'package:runata_pathway/features/student/domain/student_club_selection.dart';
 import 'package:runata_pathway/features/student/domain/student_portfolio.dart';
 import 'package:runata_pathway/features/student/presentation/application_materials_screen.dart';
 
@@ -54,6 +56,25 @@ class _FakePortfolioRepository extends StudentPortfolioRepository {
   }
 }
 
+/// Needed because opening Activities Report (Day 5 item 2) reads
+/// `clubSubmissionProvider`, which depends on this repository — without
+/// an override, the real provider would try `Hive.box<StudentClubSelection>`
+/// on a box this test's `setUp` never opens.
+class _FakeStudentClubsRepository extends StudentClubsRepository {
+  _FakeStudentClubsRepository(super.box, [StudentClubSelection? initial])
+      : _selection = initial;
+
+  StudentClubSelection? _selection;
+
+  @override
+  StudentClubSelection? loadSelection() => _selection;
+
+  @override
+  Future<void> saveSelection(StudentClubSelection selection) async {
+    _selection = selection;
+  }
+}
+
 class _StubDestination extends StatelessWidget {
   const _StubDestination(this.label);
   final String label;
@@ -70,6 +91,7 @@ void main() {
     registerAdapterIfNeeded(StudentActivitiesReportAdapter());
     registerAdapterIfNeeded(PortfolioWorkEntryAdapter());
     registerAdapterIfNeeded(StudentPortfolioAdapter());
+    registerAdapterIfNeeded(StudentClubSelectionAdapter());
   });
 
   tearDown(() async => tearDownTestHive());
@@ -96,6 +118,7 @@ void main() {
     required String grade,
     StudentActivitiesReport? initialReport,
     StudentPortfolio? initialPortfolio,
+    StudentClubSelection? initialClubSelection,
   }) async {
     // Same viewport-size fix as the other Day 2–4 screen tests: 8 rows +
     // header + tabs + back button push past the default 800x600 surface.
@@ -110,6 +133,9 @@ void main() {
     final portfolioBox = await tester.runAsync(
       () => Hive.openBox<StudentPortfolio>('$boxName-portfolio'),
     );
+    final clubsBox = await tester.runAsync(
+      () => Hive.openBox<StudentClubSelection>('$boxName-clubs'),
+    );
 
     final container = ProviderContainer(
       overrides: [
@@ -118,6 +144,9 @@ void main() {
         ),
         studentPortfolioRepositoryProvider.overrideWithValue(
           _FakePortfolioRepository(portfolioBox!, initialPortfolio),
+        ),
+        studentClubsRepositoryProvider.overrideWithValue(
+          _FakeStudentClubsRepository(clubsBox!, initialClubSelection),
         ),
       ],
     );
@@ -296,8 +325,8 @@ void main() {
 
   group('opening a real doc', () {
     testWidgets(
-        'tapping Open on Activities Report shows its placeholder detail '
-        'view, with a way back to the row list', (tester) async {
+        'tapping Open on Activities Report shows the real report screen, '
+        'with a way back to the row list', (tester) async {
       await tester.pumpWidget(
         await harness(tester, 'materials_open_activities', grade: '10'),
       );
@@ -306,10 +335,10 @@ void main() {
       await tester.tap(find.byKey(const Key('open_doc_activities')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Student Activities Report — coming next'), findsOneWidget);
+      expect(find.text('A. Mandatory Grade Level Program'), findsOneWidget);
       expect(find.text('Portfolio'), findsNothing); // Hub row list is gone
 
-      await tester.tap(find.byKey(const Key('materials_back_to_hub')));
+      await tester.tap(find.byKey(const Key('activities_back_to_hub')));
       await tester.pumpAndSettle();
 
       expect(find.text('Student Activities Report'), findsOneWidget);
