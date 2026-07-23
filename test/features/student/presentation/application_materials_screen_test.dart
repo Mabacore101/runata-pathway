@@ -345,7 +345,7 @@ void main() {
       expect(find.text('Portfolio'), findsOneWidget);
     });
 
-    testWidgets('tapping Open on Portfolio shows its own placeholder',
+    testWidgets('tapping Open on Portfolio shows the real portfolio screen',
         (tester) async {
       await tester.pumpWidget(
         await harness(tester, 'materials_open_portfolio', grade: '10'),
@@ -355,7 +355,8 @@ void main() {
       await tester.tap(find.byKey(const Key('open_doc_portfolio')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Portfolio — coming next'), findsOneWidget);
+      expect(find.text('My works'), findsOneWidget);
+      expect(find.text('Maker / artist statement'), findsOneWidget);
     });
   });
 
