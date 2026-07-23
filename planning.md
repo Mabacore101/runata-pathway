@@ -366,28 +366,33 @@ whether Day 4 can recover any of it, but not by rushing verification.
 this was flagged as heavier than Day 3 before starting (5 substantial
 items plus new capacity-engine complexity), not a new slip.
 
-**Day 5 — Application Materials, part 1 — 🔜 TODO**
-- [ ] Hub shell — 3 grade-level tabs (confirmed correct; the JS's variable
-      is confusingly named `AYS` but its values are genuinely Gr 10/11/12,
-      not academic years — naming quirk, not a planning correction) × all
-      8 DOCS rows with status chips, though only 2 of the 8 get a real
-      screen today (the other 6 route to Day 6's `renderMatDoc`)
-- [ ] Student Activities Report — sections A/C/D/E/F as repeatable rows
-      (follow Day 2's `TestEntry`/`ParentGuardianEntry` pattern — an
-      owning record with embedded `List<T>` fields, not standalone
-      per-section repositories). Section C's eligibility rule (≥4 months
-      + proof letter) already matches the field/datatype doc exactly.
-      **Section B (auto-fill from clubs): see Section 6 above — genuinely
-      fixed via Day 4's `previewClubWeek`, not replicated as broken.**
-      `dates` field is a hardcoded literal in the original site too
-      (`"Jul 2025 – Jun 2026"`) — port as a placeholder, not a bug to
-      solve.
-- [ ] Portfolio — works list (autosave-only, live "# Works" counter),
-      maker statement, major-based suggestion banner. The
-      Portfolio-vs-Activities-Report explainer copy
-      (`portfolioInfoHTML`/`PF` data) is genuine load-bearing UX text —
-      port faithfully, not decorative filler.
-- [ ] Tests alongside each piece (per Section 7), same rhythm as Days 2–4
+**Day 5 — Application Materials, part 1 — ✅ DONE**
+- [x] Hub shell — all 8 `MaterialDoc` rows built, gated behind a single
+      `availableToday` flag per doc (only Activities Report + Portfolio
+      flipped on today) — Day 6 only needs to flip 6 booleans as their
+      screens ship, nothing structural to redo
+- [x] Student Activities Report — sections A/C/D/E/F as repeatable rows,
+      following the owning-record-with-embedded-lists shape. **Good
+      self-correction caught during build:** the controller initially
+      assumed a Profile-style deferred-save pattern, then traced the
+      actual JS handlers and found row add/delete are immediate/persisted
+      while only field edits batch into Save — corrected to match
+      `TestsController`'s already-established pattern rather than
+      inventing a third shape. Section C's eligibility rule confirmed
+      exact against the field/datatype doc.
+- [x] **Section B (clubs auto-fill) — genuinely fixed, verified working.**
+      Wired to `previewClubWeek`, confirmed correct: dedup matches the
+      JS's `[...new Set(...)]` exactly, `role` hardcoded to "Member",
+      `dates` hardcoded to the same literal placeholder the original site
+      itself uses. Widget test seeds a real `StudentClubSelection` and
+      confirms exact rows/role/dates appear, plus the correct empty-state
+      prompt when clubs were never submitted.
+- [x] Portfolio — works list, maker statement, major-suggestion banner.
+      "# Works" counter confirmed reading raw `works.length`
+      (unfiltered), matching both the JS and the behavioral spec's exact
+      wording (cited directly in the model's doc comment).
+- [x] Tests — thorough throughout, including the dedicated Section B
+      end-to-end cross-check against Day 4 (item 4)
 
 **Day 6 — Application Materials part 2 + remaining pieces**
 - 5 shared essay sections (same template, different criteria lists; "Mark as Ready" bypass bug stance)
