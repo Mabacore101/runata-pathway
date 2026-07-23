@@ -10,6 +10,7 @@ import '../application/portfolio_controller.dart';
 import '../domain/application_materials_catalog.dart';
 import '../domain/student_activities_report.dart';
 import '../domain/student_portfolio.dart';
+import 'activities_report_screen.dart';
 
 /// Application Materials — Pathway form 6. Day 5 item 1: the Hub shell
 /// only. Mirrors the JS's `renderMaterials()`: 3 grade-level tabs over
@@ -56,6 +57,9 @@ class _ApplicationMaterialsScreenState
   @override
   Widget build(BuildContext context) {
     if (_openDocKey != null) {
+      if (_openDocKey == 'activities') {
+        return ActivitiesReportScreen(onBack: _closeDoc);
+      }
       final doc = materialDocs.firstWhere((d) => d.key == _openDocKey);
       return _DocPlaceholderScreen(doc: doc, onBack: _closeDoc);
     }
