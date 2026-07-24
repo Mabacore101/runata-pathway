@@ -176,7 +176,10 @@ These exist in the current live site's behavior. Default stance below unless ove
       auto-filled entry's role to "Member" until Staff exists, don't
       invent a fake assignment system.
 - [ ] "Mark as Ready" on essay/application sections can be bypassed without meeting
-      criteria — relevant to Day 6.
+      criteria — relevant to Day 6. **Precision correction (Day 6 prep):** the
+      handler checks nothing at all, not even non-empty text — a straight
+      unconditional status flip to "Final". Worth replicating the actual
+      unconditional behavior, not a softer "non-empty check" version.
 
 *(Confirm/adjust this list against the full behavioral spec doc before Day 5–6 work,
 since two of these live in Application Materials.)*
@@ -394,13 +397,37 @@ items plus new capacity-engine complexity), not a new slip.
 - [x] Tests — thorough throughout, including the dedicated Section B
       end-to-end cross-check against Day 4 (item 4)
 
-**Day 6 — Application Materials part 2 + remaining pieces**
-- 5 shared essay sections (same template, different criteria lists; "Mark as Ready" bypass bug stance)
-- Recommendation Letters (mark uploaded / undo toggle)
-- Counsellor's Corner (plain form)
-- Pathways (external link, new tab)
-- Dashboard + Nav Grid (these are "doors" into what's already built — should be fast)
-- Last 1–2 hrs: widget tests for remaining forms
+**Day 6 — Application Materials part 2 + remaining pieces — 🔜 TODO**
+- [ ] 5 shared essay sections — one shared template (`renderMatDoc`
+      equivalent), different `RUBRIC` criteria per type. The criteria
+      themselves are real content (regex keyword checks, word-count
+      ranges, paragraph minimums) — genuine data to port, not placeholder
+      logic. `DOC_INFO`'s per-essay explanatory copy is load-bearing UX
+      text, same category as Day 5's portfolio explainer — port
+      faithfully. "Mark as Ready" bug: see corrected description above.
+- [ ] Recommendation Letters (mark uploaded / undo toggle) — shares the
+      same template as the essays via a different `kind`, not a separate
+      screen in the original site
+- [ ] Counsellor's Corner (plain form) — confirmed genuinely simple by
+      direct inspection, matches field/datatype doc closely, reuses Day
+      2's `cns`/`ctext`/`cwho` helper shapes
+- [ ] Pathways (external link, new tab) — confirmed genuinely small,
+      list + detail view
+- [ ] **Nav Grid — corrected scope: this is NOT a new screen.** It's
+      finishing Day 1's `student_home_screen.dart`, which was deliberately
+      left as a 3-card simplification pending today (Day 1's own note said
+      as much). Open and extend that existing file — CTA button + roadmap
+      tracker + 8-tile grid all belong to the same screen in the original
+      site. See day6-trimmed-source.md finding 1.
+- [ ] **Dashboard — corrected scope: NOT a quick "door," budget real time.**
+      7-panel screen (Overview/Target/Tests/Fit/Grades/Activities/
+      Materials) with a completion-ring and next-steps logic, reading
+      from every prior day's data (Days 2–5). No new business logic —
+      it's aggregation/re-display only — but it's genuine screen-building
+      work across every existing feature's read side. See
+      day6-codebase-reference.md's data-sources table for where each
+      panel's data already lives.
+- [ ] Tests alongside each piece (per Section 7), same rhythm as Days 2–5
 
 **Day 7 — Integration + polish + buffer**
 - Integration test: full path login → Profile → Target Universities → My Clubs → submit → Homepage state updates
