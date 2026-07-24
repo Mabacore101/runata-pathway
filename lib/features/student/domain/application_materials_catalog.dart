@@ -22,12 +22,12 @@ class MaterialDoc {
   final String name;
   final MaterialDocKind kind;
 
-  /// True only for the 2 rows Day 5 actually builds (Student Activities
-  /// Report, Portfolio). The other 6 stay visibly present but inert —
-  /// same "visibly disabled, not hidden" pattern as Day 1's Parent/Staff
-  /// role buttons — until Day 6 lands their real screens. Flip this to
-  /// `true` for each doc as its Day 6 screen ships; nothing else on the
-  /// Hub needs to change when that happens.
+  /// True once the doc's real Day 6 screen ships. All 8 rows are now
+  /// live (Days 5–6) — nothing on the Hub is disabled/placeholder
+  /// anymore. Kept as a per-doc flag (rather than removed entirely)
+  /// since it's the same general "visibly disabled, not hidden"
+  /// mechanism used elsewhere in this app (Day 1's Parent/Staff role
+  /// buttons) and may be needed again for a future doc.
   final bool availableToday;
 
   /// Matches the JS's per-kind `sub` text in `renderMaterials()` exactly.
@@ -64,31 +64,37 @@ const materialDocs = <MaterialDoc>[
     key: 'personal',
     name: 'Personal Statement (UCAS)',
     kind: MaterialDocKind.text,
+    availableToday: true,
   ),
   MaterialDoc(
     key: 'commonapp',
     name: 'Common App Essay',
     kind: MaterialDocKind.text,
+    availableToday: true,
   ),
   MaterialDoc(
     key: 'studyplan',
     name: 'Study Plan',
     kind: MaterialDocKind.text,
+    availableToday: true,
   ),
   MaterialDoc(
     key: 'sop',
     name: 'Statement of Purpose / Motivation Letter',
     kind: MaterialDocKind.text,
+    availableToday: true,
   ),
   MaterialDoc(
     key: 'cv',
     name: 'CV / Resume',
     kind: MaterialDocKind.text,
+    availableToday: true,
   ),
   MaterialDoc(
     key: 'recletter',
     name: 'Recommendation Letters',
     kind: MaterialDocKind.upload,
+    availableToday: true,
   ),
 ];
 

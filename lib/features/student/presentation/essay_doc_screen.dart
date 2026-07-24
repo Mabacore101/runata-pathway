@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/fit_chip.dart';
 import '../application/application_documents_controller.dart';
 import '../application/materials_context.dart';
 import '../domain/application_materials_catalog.dart';
@@ -285,21 +286,19 @@ class _EssayDocScreenState extends ConsumerState<EssayDocScreen> {
 
   _HeadChip _headFor(bool contentIsEmpty, DocScore score) {
     if (contentIsEmpty) {
-      return const _HeadChip(label: 'Start writing', tone: _ChipTone.none);
+      return const _HeadChip(label: 'Start writing', tone: FitTone.none);
     }
     final ratio = score.total > 0 ? score.met / score.total : 0.0;
-    if (ratio >= 0.8) return const _HeadChip(label: 'Looks strong', tone: _ChipTone.met);
-    if (ratio >= 0.5) return const _HeadChip(label: 'Getting there', tone: _ChipTone.track);
-    return const _HeadChip(label: 'Needs work', tone: _ChipTone.work);
+    if (ratio >= 0.8) return const _HeadChip(label: 'Looks strong', tone: FitTone.met);
+    if (ratio >= 0.5) return const _HeadChip(label: 'Getting there', tone: FitTone.track);
+    return const _HeadChip(label: 'Needs work', tone: FitTone.work);
   }
 }
-
-enum _ChipTone { met, track, work, none }
 
 class _HeadChip {
   const _HeadChip({required this.label, required this.tone});
   final String label;
-  final _ChipTone tone;
+  final FitTone tone;
 }
 
 /// `.fbpanel` equivalent — the head chip + score text + criteria list.
@@ -324,7 +323,7 @@ class _FeedbackPanel extends StatelessWidget {
         children: [
           Row(
             children: [
-              _Chip(label: head.label, tone: head.tone),
+              FitChip(label: head.label, tone: head.tone),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(scoreText, style: AppFonts.body(fontSize: 12, color: AppColors.muted)),
@@ -335,35 +334,6 @@ class _FeedbackPanel extends StatelessWidget {
           for (var i = 0; i < results.length; i++)
             _FeedbackItem(criterion: results[i], isFirst: i == 0),
         ],
-      ),
-    );
-  }
-}
-
-/// `.fitb`/`.fit-met`/`.fit-track`/`.fit-work`/`.fit-none` equivalent.
-class _Chip extends StatelessWidget {
-  const _Chip({required this.label, required this.tone});
-  final String label;
-  final _ChipTone tone;
-
-  @override
-  Widget build(BuildContext context) {
-    final (Color bg, Color fg) = switch (tone) {
-      _ChipTone.met => (AppColors.greenSoft, AppColors.green),
-      _ChipTone.track => (AppColors.tealSoft, AppColors.tealDeep),
-      _ChipTone.work => (AppColors.amberSoft, AppColors.amber),
-      _ChipTone.none => (AppColors.surface2, AppColors.muted),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: bg,
-        border: tone == _ChipTone.none ? Border.all(color: AppColors.line) : null,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: AppFonts.mono(fontSize: 9, weight: FontWeight.w600, color: fg, letterSpacing: 0.4),
       ),
     );
   }

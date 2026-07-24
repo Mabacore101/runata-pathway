@@ -4,27 +4,34 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/fit_chip.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/activities_report_controller.dart';
+import '../application/application_documents_controller.dart';
+import '../application/materials_context.dart';
 import '../application/portfolio_controller.dart';
+import '../domain/application_document_state.dart';
 import '../domain/application_materials_catalog.dart';
+import '../domain/document_rubric.dart';
 import '../domain/student_activities_report.dart';
 import '../domain/student_portfolio.dart';
 import 'activities_report_screen.dart';
+import 'essay_doc_screen.dart';
 import 'portfolio_screen.dart';
 
-/// Application Materials — Pathway form 6. Day 5 item 1: the Hub shell
-/// only. Mirrors the JS's `renderMaterials()`: 3 grade-level tabs over
-/// all 8 `DOCS` rows, each with a status chip.
+/// Application Materials — Pathway form 6. Mirrors the JS's
+/// `renderMaterials()`: 3 grade-level tabs over all 8 `DOCS` rows, each
+/// with a status chip.
 ///
-/// Only 2 of the 8 rows open real content today (Student Activities
-/// Report, Portfolio — Day 5 items 2–3, landing in this same screen next
-/// by replacing `_DocPlaceholderScreen`'s body with the real section
-/// widgets, keyed off the same `_openDocKey`). The other 6 (5 essay docs
-/// + Recommendation Letters) are Day 6 scope: visibly present with a
-/// live subtitle, but their "Open" action is disabled with a "Day 6"
-/// tag — same "visibly disabled, not hidden" pattern as Day 1's
-/// Parent/Staff role buttons.
+/// All 8 rows open real content as of Day 6: Student Activities Report
+/// and Portfolio (report/builder-kind, Day 5) route to their own
+/// screens; the 5 shared-template essays + Recommendation Letters
+/// (text/upload-kind, Day 6) all route to the same [EssayDocScreen],
+/// parameterized by [MaterialDoc.key] — mirroring the JS's own
+/// `renderMatDoc(k)` being one function for all 6, not 6 near-identical
+/// ones. Nothing is disabled/placeholder anymore; the Day 1
+/// "visibly disabled, not hidden" pattern (`_SoonTag`) that covered these
+/// 6 rows through Day 5 no longer applies to any row here.
 ///
 /// One screen owns all of this internally via `_openDocKey` (null = the
 /// row list; a `MaterialDoc.key` = that doc's content shown in place)
@@ -64,12 +71,18 @@ class _ApplicationMaterialsScreenState
       if (_openDocKey == 'portfolio') {
         return PortfolioScreen(onBack: _closeDoc);
       }
-      final doc = materialDocs.firstWhere((d) => d.key == _openDocKey);
-      return _DocPlaceholderScreen(doc: doc, onBack: _closeDoc);
+      return EssayDocScreen(
+        docKey: _openDocKey!,
+        ay: academicYearTabs[_ayIndex].id,
+        onBack: _closeDoc,
+      );
     }
 
     final report = ref.watch(activitiesReportControllerProvider);
     final portfolio = ref.watch(portfolioControllerProvider);
+    final docs = ref.watch(applicationDocumentsControllerProvider);
+    final materialsCtx = ref.watch(materialsContextProvider);
+    final ay = academicYearTabs[_ayIndex].id;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Application materials')),
@@ -120,7 +133,7 @@ class _ApplicationMaterialsScreenState
                   return _MaterialRow(
                     key: Key('material_row_${doc.key}'),
                     doc: doc,
-                    status: _statusFor(doc, report, portfolio),
+                    status: _statusFor(doc, report, portfolio, docs, materialsCtx, ay),
                     onOpen:
                         doc.availableToday ? () => _openDoc(doc.key) : null,
                   );
@@ -144,41 +157,75 @@ class _ApplicationMaterialsScreenState
   }
 
   /// Mirrors the JS's per-kind chip logic in `renderMaterials()` exactly
-  /// for the 2 real docs (`actStarted`/`portfolioWorks[...].works.length`
-  /// — see the domain models' own doc comments); the other 6 kinds show
-  /// a plain "Day 6" tag today rather than the JS's `scoreDoc`-derived
-  /// chip, since that needs Day 6's rubric data which doesn't exist yet.
+  /// for all 4 kinds now (`actStarted`/`portfolioWorks[...].works.length`
+  /// for report/builder — see the domain models' own doc comments;
+  /// [_textStatusFor]/[_uploadStatusFor] for text/upload, below).
   _DocStatus _statusFor(
     MaterialDoc doc,
     StudentActivitiesReport report,
     StudentPortfolio portfolio,
+    Map<String, ApplicationDocumentState> docs,
+    MaterialsContext materialsCtx,
+    String ay,
   ) {
     switch (doc.kind) {
       case MaterialDocKind.report:
         return report.hasAnyData
-            ? const _DocStatus(label: 'Started', tone: _StatusTone.met)
-            : const _DocStatus(label: 'Not started', tone: _StatusTone.none);
+            ? const _DocStatus(label: 'Started', tone: FitTone.met)
+            : const _DocStatus(label: 'Not started', tone: FitTone.none);
       case MaterialDocKind.builder:
         final n = portfolio.works.length;
         return n > 0
-            ? _DocStatus(
-                label: '$n work${n > 1 ? 's' : ''}',
-                tone: _StatusTone.met,
-              )
-            : const _DocStatus(label: 'Not started', tone: _StatusTone.none);
+            ? _DocStatus(label: '$n work${n > 1 ? 's' : ''}', tone: FitTone.met)
+            : const _DocStatus(label: 'Not started', tone: FitTone.none);
       case MaterialDocKind.text:
+        return _textStatusFor(doc, docs, materialsCtx, ay);
       case MaterialDocKind.upload:
-        return const _DocStatus(label: 'Day 6', tone: _StatusTone.none);
+        return _uploadStatusFor(doc, docs);
     }
   }
-}
 
-enum _StatusTone { met, none }
+  /// Mirrors the JS's per-row text-kind chip in `renderMaterials()`
+  /// exactly:
+  /// ```js
+  /// const sc=scoreDoc(d.k,content,ctx);
+  /// const r=content.trim()?sc.met/sc.total:0;
+  /// chip=!content.trim()?"Not started":r>=.8?"Looks strong":
+  ///   r>=.5?"Getting there":"Needs work";
+  /// ```
+  _DocStatus _textStatusFor(
+    MaterialDoc doc,
+    Map<String, ApplicationDocumentState> docs,
+    MaterialsContext materialsCtx,
+    String ay,
+  ) {
+    final content = docs[doc.key]?.contentFor(ay) ?? '';
+    if (content.trim().isEmpty) {
+      return const _DocStatus(label: 'Not started', tone: FitTone.none);
+    }
+    final score = scoreDoc(doc.key, content, materialsCtx.forScoring);
+    final ratio = score.total > 0 ? score.met / score.total : 0.0;
+    if (ratio >= 0.8) return const _DocStatus(label: 'Looks strong', tone: FitTone.met);
+    if (ratio >= 0.5) return const _DocStatus(label: 'Getting there', tone: FitTone.track);
+    return const _DocStatus(label: 'Needs work', tone: FitTone.work);
+  }
+
+  /// Mirrors the JS's per-row upload-kind chip exactly:
+  /// `const up=(D.note&&D.note.trim())||D.submitted;
+  /// chip=up?"Uploaded":"Not started";`
+  _DocStatus _uploadStatusFor(MaterialDoc doc, Map<String, ApplicationDocumentState> docs) {
+    final d = docs[doc.key];
+    final uploaded = (d?.note?.trim().isNotEmpty ?? false) || (d?.submitted ?? false);
+    return uploaded
+        ? const _DocStatus(label: 'Uploaded', tone: FitTone.met)
+        : const _DocStatus(label: 'Not started', tone: FitTone.none);
+  }
+}
 
 class _DocStatus {
   const _DocStatus({required this.label, required this.tone});
   final String label;
-  final _StatusTone tone;
+  final FitTone tone;
 }
 
 /// Pill-style grade tabs (`.aytabs` in the original CSS) — Gr 10/11/12.
@@ -294,7 +341,7 @@ class _MaterialRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          _StatusChip(status: status),
+          FitChip(label: status.label, tone: status.tone),
           const SizedBox(width: 10),
           if (onOpen != null)
             OutlinedButton(
@@ -305,32 +352,6 @@ class _MaterialRow extends StatelessWidget {
           else
             const _SoonTag(),
         ],
-      ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-  final _DocStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final met = status.tone == _StatusTone.met;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: met ? AppColors.greenSoft : AppColors.surface2,
-        border: met ? null : Border.all(color: AppColors.line),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status.label,
-        style: AppFonts.mono(
-          fontSize: 9,
-          weight: FontWeight.w600,
-          color: met ? AppColors.green : AppColors.muted,
-        ),
       ),
     );
   }
@@ -357,47 +378,6 @@ class _SoonTag extends StatelessWidget {
           weight: FontWeight.w600,
           color: AppColors.muted,
           letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
-}
-
-/// Temporary placeholder body for the 2 real docs, shown when
-/// `_openDocKey` is set — Day 5 items 2/3 replace this with the real
-/// Activities Report / Portfolio content, keyed off the same state, so
-/// nothing about the Hub's navigation model changes when that lands.
-class _DocPlaceholderScreen extends StatelessWidget {
-  const _DocPlaceholderScreen({required this.doc, required this.onBack});
-
-  final MaterialDoc doc;
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(doc.name)),
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${doc.name} — coming next',
-                  style: AppFonts.body(color: AppColors.muted),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton(
-                  key: const Key('materials_back_to_hub'),
-                  onPressed: onBack,
-                  child: const Text('← Back to materials'),
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );
