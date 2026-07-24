@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_ce/hive_ce.dart';
 
 import '../../../core/persistence/hive_boxes.dart';
+import '../domain/application_document_state.dart';
 import '../domain/grade_subject_entry.dart';
 import '../domain/student_activities_report.dart';
 import '../domain/student_club_selection.dart';
@@ -77,4 +78,12 @@ final studentActivitiesReportBoxProvider =
 /// [studentActivitiesReportBoxProvider].
 final studentPortfolioBoxProvider = Provider<Box<StudentPortfolio>>((ref) {
   return Hive.box<StudentPortfolio>(HiveBoxes.studentPortfolio);
+});
+
+/// Application Materials' 6 essay/upload docs box (Day 6) — flat
+/// collection, same role as [studentUniversityTargetsBoxProvider] rather
+/// than the single-record boxes above.
+final applicationDocumentsBoxProvider =
+    Provider<Box<ApplicationDocumentState>>((ref) {
+  return Hive.box<ApplicationDocumentState>(HiveBoxes.applicationDocuments);
 });

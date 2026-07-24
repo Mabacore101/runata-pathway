@@ -40,6 +40,16 @@ class HiveBoxes {
   /// [studentActivitiesReport]. One [StudentPortfolio] record per student
   /// under [HiveKeys.studentPortfolio].
   static const studentPortfolio = 'student_portfolio_box';
+
+  /// Application Materials' 5 shared-template essays + Recommendation
+  /// Letters (Day 6) — flat, id-keyed collection, same pattern as
+  /// [studentUniversityTargets]/[studentTests], NOT the single-record
+  /// pattern the boxes above use. Each row keys itself by its own
+  /// `docKey` (`personal`/`commonapp`/`studyplan`/`sop`/`cv`/`recletter`
+  /// — see `application_materials_catalog.dart`'s `MaterialDoc.key`), so
+  /// no matching [HiveKeys] entry is needed, same reasoning as
+  /// [studentUniversityTargets]'s own doc comment.
+  static const applicationDocuments = 'application_documents_box';
 }
 
 /// Fixed keys used inside boxes that hold a single record rather than a
