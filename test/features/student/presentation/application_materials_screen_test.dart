@@ -11,14 +11,18 @@ import 'package:runata_pathway/features/auth/application/auth_controller.dart';
 import 'package:runata_pathway/features/auth/application/auth_state.dart';
 import 'package:runata_pathway/features/auth/domain/student_session.dart';
 import 'package:runata_pathway/features/student/data/student_activities_report_repository.dart';
+import 'package:runata_pathway/features/student/data/student_application_documents_repository.dart';
 import 'package:runata_pathway/features/student/data/student_clubs_repository.dart';
 import 'package:runata_pathway/features/student/data/student_portfolio_repository.dart';
+import 'package:runata_pathway/features/student/data/student_university_targets_repository.dart';
 import 'package:runata_pathway/features/student/domain/activity_entry.dart';
+import 'package:runata_pathway/features/student/domain/application_document_state.dart';
 import 'package:runata_pathway/features/student/domain/community_service_entry.dart';
 import 'package:runata_pathway/features/student/domain/portfolio_work_entry.dart';
 import 'package:runata_pathway/features/student/domain/student_activities_report.dart';
 import 'package:runata_pathway/features/student/domain/student_club_selection.dart';
 import 'package:runata_pathway/features/student/domain/student_portfolio.dart';
+import 'package:runata_pathway/features/student/domain/university_target.dart';
 import 'package:runata_pathway/features/student/presentation/application_materials_screen.dart';
 
 /// Same fake-repository rationale as my_clubs_screen_test.dart's own doc
@@ -75,6 +79,52 @@ class _FakeStudentClubsRepository extends StudentClubsRepository {
   }
 }
 
+/// New for Day 6's wiring step — the Hub now reads
+/// `applicationDocumentsControllerProvider` unconditionally (for every
+/// text/upload-kind row's status chip), so every test in this file needs
+/// this override even if it never opens an essay doc itself.
+class _FakeApplicationDocumentsRepository
+    extends StudentApplicationDocumentsRepository {
+  _FakeApplicationDocumentsRepository(
+    super.box, [
+    Map<String, ApplicationDocumentState>? initial,
+  ]) : _docs = {...?initial};
+
+  final Map<String, ApplicationDocumentState> _docs;
+
+  @override
+  ApplicationDocumentState load(String docKey) =>
+      _docs[docKey] ?? ApplicationDocumentState(docKey: docKey);
+
+  @override
+  Future<void> save(ApplicationDocumentState doc) async {
+    _docs[doc.docKey] = doc;
+  }
+}
+
+/// New for Day 6's wiring step — `materialsContextProvider` (read by
+/// every text-kind row's status chip) depends on this.
+class _FakeUniversityTargetsRepository extends StudentUniversityTargetsRepository {
+  _FakeUniversityTargetsRepository(super.box, [List<UniversityTarget>? initial])
+      : _targets = [...?initial];
+
+  final List<UniversityTarget> _targets;
+
+  @override
+  List<UniversityTarget> loadAll() => _targets;
+
+  @override
+  Future<void> upsert(UniversityTarget target) async {
+    _targets.removeWhere((t) => t.id == target.id);
+    _targets.add(target);
+  }
+
+  @override
+  Future<void> delete(String id) async {
+    _targets.removeWhere((t) => t.id == id);
+  }
+}
+
 class _StubDestination extends StatelessWidget {
   const _StubDestination(this.label);
   final String label;
@@ -82,6 +132,17 @@ class _StubDestination extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(body: Center(child: Text(label)));
 }
+
+// Same sample essay verified word-for-word in document_rubric_test.dart —
+// 458 words, meets all 6 of "personal"'s criteria.
+const _fullMarksPersonalEssay =
+    'Ever since I built my first robot out of spare Lego pieces at age nine, I have been fascinated by how machines can be taught to solve problems on their own. That early curiosity turned into a genuine passion for computer science, one that has only grown stronger through every project I have taken on since, and it now shapes almost every choice I make about how I spend my free time outside of school.\n'
+    '\n'
+    'In my final two years of school, I led a team of four students in a regional robotics competition, where we designed and programmed an autonomous sorting arm from scratch. When I hit a wall debugging our sensor calibration two days before the deadline, I spent an entire weekend rewriting our control loop, testing each change against the same three obstacle courses over and over until the timing finally felt right. The arm worked exactly as intended on the day of the competition, and we went on to win second place out of eighteen teams from across the region. More importantly than the result itself, I discovered how much I genuinely enjoy the slow, sometimes frustrating process of taking a rough sketch on paper and turning it into something that actually functions reliably in the real world.\n'
+    '\n'
+    'Outside of competitions, I also founded a small coding club at school to teach younger students the basics of Python, an experience that taught me as much about patient communication as it did about programming itself. Explaining a loop or a conditional statement to a twelve-year-old who has never touched a keyboard before forces you to understand the idea far more deeply than any exam ever could, and watching students who started the term afraid of the terminal end it by building their own simple games was one of the most rewarding things I have done. Running the club for a full academic year also meant learning how to plan sessions, manage a modest budget for equipment, and keep a group of very different personalities engaged week after week.\n'
+    '\n'
+    'I have come to realise that the course I want to study is not just about writing code, but about understanding the systems that code controls and the people those systems ultimately serve. That is exactly what a Computer Science degree at university would let me explore in far greater depth, moving from the small, self-contained projects I have built so far toward genuinely complex, collaborative systems. Studying this field would let me combine the analytical rigour I developed through the robotics competition with the creative problem solving I have always been drawn to since childhood, and I am ready to bring that same persistence and curiosity to a university programme that challenges me every single day.';
 
 void main() {
   setUp(() async {
@@ -92,6 +153,9 @@ void main() {
     registerAdapterIfNeeded(PortfolioWorkEntryAdapter());
     registerAdapterIfNeeded(StudentPortfolioAdapter());
     registerAdapterIfNeeded(StudentClubSelectionAdapter());
+    registerAdapterIfNeeded(DocumentStatusAdapter());
+    registerAdapterIfNeeded(ApplicationDocumentStateAdapter());
+    registerAdapterIfNeeded(UniversityTargetAdapter());
   });
 
   tearDown(() async => tearDownTestHive());
@@ -119,6 +183,8 @@ void main() {
     StudentActivitiesReport? initialReport,
     StudentPortfolio? initialPortfolio,
     StudentClubSelection? initialClubSelection,
+    Map<String, ApplicationDocumentState>? initialDocs,
+    List<UniversityTarget>? initialTargets,
   }) async {
     // Same viewport-size fix as the other Day 2–4 screen tests: 8 rows +
     // header + tabs + back button push past the default 800x600 surface.
@@ -136,6 +202,12 @@ void main() {
     final clubsBox = await tester.runAsync(
       () => Hive.openBox<StudentClubSelection>('$boxName-clubs'),
     );
+    final docsBox = await tester.runAsync(
+      () => Hive.openBox<ApplicationDocumentState>('$boxName-docs'),
+    );
+    final targetsBox = await tester.runAsync(
+      () => Hive.openBox<UniversityTarget>('$boxName-targets'),
+    );
 
     final container = ProviderContainer(
       overrides: [
@@ -147,6 +219,12 @@ void main() {
         ),
         studentClubsRepositoryProvider.overrideWithValue(
           _FakeStudentClubsRepository(clubsBox!, initialClubSelection),
+        ),
+        studentApplicationDocumentsRepositoryProvider.overrideWithValue(
+          _FakeApplicationDocumentsRepository(docsBox!, initialDocs),
+        ),
+        studentUniversityTargetsRepositoryProvider.overrideWithValue(
+          _FakeUniversityTargetsRepository(targetsBox!, initialTargets),
         ),
       ],
     );
@@ -170,6 +248,17 @@ void main() {
     return tester.widget<Text>(find.text(label)).style?.color;
   }
 
+  /// Finds a widget by [matching] scoped to one specific row — needed
+  /// since Day 6 added 6 more rows that can also show a "Not started"
+  /// chip, making a bare `find.text('Not started')` count fragile and
+  /// coupled to unrelated rows' state.
+  Finder inRow(String docKey, Finder matching) {
+    return find.descendant(
+      of: find.byKey(Key('material_row_$docKey')),
+      matching: matching,
+    );
+  }
+
   group('the 8 DOCS rows', () {
     testWidgets('all 8 rows render with their real names', (tester) async {
       await tester.pumpWidget(await harness(tester, 'materials_rows', grade: '10'));
@@ -185,29 +274,36 @@ void main() {
       expect(find.text('Recommendation Letters'), findsOneWidget);
     });
 
-    testWidgets(
-        'only Activities Report and Portfolio have an Open button — the '
-        'other 6 show a DAY 6 tag instead', (tester) async {
+    testWidgets('all 8 rows have an Open button — nothing is placeholder/'
+        'disabled anymore, and no "DAY 6" tag exists anywhere', (tester) async {
       await tester.pumpWidget(await harness(tester, 'materials_open', grade: '10'));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('open_doc_activities')), findsOneWidget);
-      expect(find.byKey(const Key('open_doc_portfolio')), findsOneWidget);
-      expect(find.byKey(const Key('open_doc_personal')), findsNothing);
-      expect(find.byKey(const Key('open_doc_recletter')), findsNothing);
-      expect(find.text('DAY 6'), findsNWidgets(6));
+      for (final key in [
+        'activities',
+        'portfolio',
+        'personal',
+        'commonapp',
+        'studyplan',
+        'sop',
+        'cv',
+        'recletter',
+      ]) {
+        expect(find.byKey(Key('open_doc_$key')), findsOneWidget, reason: key);
+      }
+      expect(find.text('DAY 6'), findsNothing);
     });
   });
 
-  group('status chips', () {
-    testWidgets('Activities Report shows "Not started" when empty',
-        (tester) async {
+  group('status chips — Activities Report / Portfolio (report/builder-kind)', () {
+    testWidgets('both show "Not started" when empty', (tester) async {
       await tester.pumpWidget(
         await harness(tester, 'materials_status_act_empty', grade: '10'),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Not started'), findsNWidgets(2)); // report + portfolio
+      expect(inRow('activities', find.text('Not started')), findsOneWidget);
+      expect(inRow('portfolio', find.text('Not started')), findsOneWidget);
     });
 
     testWidgets(
@@ -264,6 +360,109 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('1 work'), findsOneWidget);
+    });
+  });
+
+  group('status chips — text-kind essays (Day 6)', () {
+    testWidgets('shows "Not started" when nothing has been written for '
+        'the currently-selected AY tab', (tester) async {
+      await tester.pumpWidget(
+        await harness(tester, 'materials_text_status_empty', grade: '10'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(inRow('personal', find.text('Not started')), findsOneWidget);
+    });
+
+    testWidgets('shows "Looks strong" once the current tab\'s draft meets '
+        '80%+ of its criteria', (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'materials_text_status_strong',
+          grade: '11', // defaults to the Gr 11 tab
+          initialDocs: {
+            'personal': ApplicationDocumentState(
+              docKey: 'personal',
+              content: {'g11': _fullMarksPersonalEssay},
+            ),
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(inRow('personal', find.text('Looks strong')), findsOneWidget);
+    });
+
+    testWidgets('the chip is scoped to the selected AY tab, not to whether '
+        'ANY tab has content — switching tabs changes it', (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'materials_text_status_ay_scoped',
+          grade: '11', // defaults to the Gr 11 tab
+          initialDocs: {
+            'personal': ApplicationDocumentState(
+              docKey: 'personal',
+              content: {'g10': _fullMarksPersonalEssay}, // g10 only
+            ),
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Gr 11 is selected by default, and 'personal' has no g11 content.
+      expect(inRow('personal', find.text('Not started')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('ay_tab_g10')));
+      await tester.pumpAndSettle();
+
+      expect(inRow('personal', find.text('Looks strong')), findsOneWidget);
+    });
+  });
+
+  group('status chips — Recommendation Letters (upload-kind, Day 6)', () {
+    testWidgets('shows "Not started" until uploaded', (tester) async {
+      await tester.pumpWidget(
+        await harness(tester, 'materials_upload_status_empty', grade: '10'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(inRow('recletter', find.text('Not started')), findsOneWidget);
+    });
+
+    testWidgets('shows "Uploaded" once submitted, even with no link text',
+        (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'materials_upload_status_submitted',
+          grade: '10',
+          initialDocs: {
+            'recletter': ApplicationDocumentState(docKey: 'recletter', submitted: true),
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(inRow('recletter', find.text('Uploaded')), findsOneWidget);
+    });
+
+    testWidgets('shows "Uploaded" once a non-empty link/filename is saved, '
+        'even without the submitted toggle', (tester) async {
+      await tester.pumpWidget(
+        await harness(
+          tester,
+          'materials_upload_status_note',
+          grade: '10',
+          initialDocs: {
+            'recletter': ApplicationDocumentState(docKey: 'recletter', note: 'letter.pdf'),
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(inRow('recletter', find.text('Uploaded')), findsOneWidget);
     });
   });
 
@@ -357,6 +556,43 @@ void main() {
 
       expect(find.text('My works'), findsOneWidget);
       expect(find.text('Maker / artist statement'), findsOneWidget);
+    });
+
+    testWidgets(
+        'tapping Open on Personal Statement shows the shared essay screen, '
+        'with a way back to the row list', (tester) async {
+      await tester.pumpWidget(
+        await harness(tester, 'materials_open_personal', grade: '10'),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('open_doc_personal')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Personal Statement (UCAS)'), findsOneWidget); // AppBar
+      expect(find.byKey(const Key('essay_doc_content')), findsOneWidget);
+      expect(find.text('Portfolio'), findsNothing); // Hub row list is gone
+
+      await tester.tap(find.byKey(const Key('essay_doc_back')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Student Activities Report'), findsOneWidget);
+    });
+
+    testWidgets('tapping Open on Recommendation Letters shows the '
+        'upload-kind variant of the shared essay screen (no textarea, no '
+        'checklist)', (tester) async {
+      await tester.pumpWidget(
+        await harness(tester, 'materials_open_recletter', grade: '10'),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('open_doc_recletter')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Recommendation Letters'), findsOneWidget); // AppBar
+      expect(find.byKey(const Key('essay_doc_content')), findsNothing);
+      expect(find.byKey(const Key('essay_doc_toggle_uploaded')), findsOneWidget);
     });
   });
 
