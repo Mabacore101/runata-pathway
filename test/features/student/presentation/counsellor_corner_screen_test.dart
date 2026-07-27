@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hive_ce/hive_ce.dart';
 import 'package:hive_ce_test/hive_ce_test.dart';
 
 import 'package:runata_pathway/core/persistence/hive_adapter_registration.dart';
+import 'package:runata_pathway/core/routing/app_router.dart';
 import 'package:runata_pathway/features/student/data/student_counsellor_corner_repository.dart';
 import 'package:runata_pathway/features/student/domain/counsellor_corner.dart';
 import 'package:runata_pathway/features/student/presentation/counsellor_corner_screen.dart';
@@ -26,6 +28,14 @@ class _FakeRepository extends StudentCounsellorCornerRepository {
   }
 }
 
+class _StubDestination extends StatelessWidget {
+  const _StubDestination(this.label);
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(body: Center(child: Text(label)));
+}
+
 void main() {
   setUp(() async {
     await setUpTestHive();
@@ -35,7 +45,22 @@ void main() {
   tearDown(() async => tearDownTestHive());
 
   late _FakeRepository repository;
-  bool backTapped = false;
+
+  GoRouter buildTestRouter() {
+    return GoRouter(
+      initialLocation: AppRoutes.studentCounsellorCorner,
+      routes: [
+        GoRoute(
+          path: AppRoutes.studentCounsellorCorner,
+          builder: (context, state) => const CounsellorCornerScreen(),
+        ),
+        GoRoute(
+          path: AppRoutes.studentHome,
+          builder: (context, state) => const _StubDestination('Home stub'),
+        ),
+      ],
+    );
+  }
 
   Future<void> pumpScreen(
     WidgetTester tester,
@@ -46,7 +71,6 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    backTapped = false;
 
     final box = await tester.runAsync(() => Hive.openBox<CounsellorCorner>(boxName));
     repository = _FakeRepository(box!, initial);
@@ -61,9 +85,7 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: MaterialApp(
-          home: CounsellorCornerScreen(onBack: () => backTapped = true),
-        ),
+        child: MaterialApp.router(routerConfig: buildTestRouter()),
       ),
     );
     await tester.pumpAndSettle();
@@ -218,13 +240,13 @@ void main() {
       expect(find.text('Counsellor\'s Corner saved.'), findsOneWidget);
     });
 
-    testWidgets("'← Back to home' calls onBack", (tester) async {
+    testWidgets("'← Back to home' navigates to the home route", (tester) async {
       await pumpScreen(tester, 'counsel_screen_back');
 
       await tester.tap(find.byKey(const Key('counsellor_back_to_home')));
       await tester.pumpAndSettle();
 
-      expect(backTapped, isTrue);
+      expect(find.text('Home stub'), findsOneWidget);
     });
   });
 }
