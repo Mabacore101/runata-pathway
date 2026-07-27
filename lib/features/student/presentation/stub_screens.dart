@@ -71,6 +71,10 @@ class StudentNavGridStubScreen extends StatelessWidget {
             onPressed: () => context.push(AppRoutes.studentCounsellorCorner),
             child: const Text('Preview: Counsellor\'s Corner'),
           ),
+          OutlinedButton(
+            onPressed: () => context.push(AppRoutes.studentCountryPathways),
+            child: const Text('Preview: Pathways'),
+          ),
         ],
       );
 }

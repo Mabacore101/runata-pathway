@@ -8,6 +8,7 @@ import '../../features/auth/presentation/choose_role_screen.dart';
 import '../../features/auth/presentation/student_login_screen.dart';
 import '../../features/student/presentation/application_materials_screen.dart';
 import '../../features/student/presentation/counsellor_corner_screen.dart';
+import '../../features/student/presentation/pathways_screen.dart';
 import '../../features/student/presentation/profile_screen.dart';
 import '../../features/student/presentation/grades_screen.dart';
 import '../../features/student/presentation/my_clubs_screen.dart';
@@ -60,6 +61,21 @@ class AppRoutes {
   /// [studentNavGrid]'s stub, same interim pattern [studentPathway]'s
   /// stub already uses for its 6 forms).
   static const studentCounsellorCorner = '/student/counsellor-corner';
+
+  /// Pathways — Runata's Signature Country Pathways (Germany/China
+  /// guides). Day 6. Named [studentCountryPathways], deliberately NOT
+  /// "studentPathways" — this rebuild already has [studentPathway]
+  /// (singular), a DIFFERENT feature entirely (the 6-form Pathway hub
+  /// stub, this rebuild's own naming, not present in the original JS).
+  /// The JS's own "Pathways" (country guides) and this rebuild's
+  /// "Pathway" (form hub) are two unrelated things that happen to share
+  /// a near-identical name — picking a clearly distinct constant here
+  /// avoids adding a typo-prone collision on top of an already-confusing
+  /// naming coincidence. Same standalone-screen, no-internal-sub-state
+  /// shape as [studentCounsellorCorner] — reached from Nav Grid once
+  /// that's built, today only via a temporary preview link on
+  /// [studentNavGrid]'s stub.
+  static const studentCountryPathways = '/student/country-pathways';
 }
 
 /// Bridges auth-state changes into go_router's `refreshListenable`.
@@ -154,6 +170,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.studentCounsellorCorner,
         builder: (context, state) => const CounsellorCornerScreen(),
       ),
+      GoRoute(
+        path: AppRoutes.studentCountryPathways,
+        builder: (context, state) => const PathwaysScreen(),
+      ),
     ],
     redirect: (context, state) {
       final isSignedIn = ref.read(authControllerProvider).isSignedIn;
@@ -169,7 +189,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           target == AppRoutes.studentTargetUniversities ||
           target == AppRoutes.studentClubs ||
           target == AppRoutes.studentMaterials ||
-          target == AppRoutes.studentCounsellorCorner;
+          target == AppRoutes.studentCounsellorCorner ||
+          target == AppRoutes.studentCountryPathways;
 
       // Both "public-only" screens (Choose Role and the Login form itself)
       // should be skipped once a session already exists — not just Login.
