@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../application/counsellor_corner_controller.dart';
 import '../domain/counsellor_corner.dart';
@@ -29,10 +31,15 @@ import '../domain/counsellor_corner.dart';
 /// free-text field but does NOT clear the stored value, matching the
 /// JS's `cwho()` exactly — it only conditionally renders the input based
 /// on the CURRENT selection, never resets the underlying data.
+/// **A real, top-level go_router route** (reached from Nav Grid, once
+/// that's built) — NOT an internally-swapped sub-screen the way
+/// `EssayDocScreen`/`ActivitiesReportScreen`/`PortfolioScreen` are inside
+/// `ApplicationMaterialsScreen`'s `_openDocKey` state. So its own back
+/// button calls `context.go(AppRoutes.studentHome)` directly, matching
+/// `ApplicationMaterialsScreen`'s own back button — no `onBack` callback
+/// parameter needed or used.
 class CounsellorCornerScreen extends ConsumerStatefulWidget {
-  const CounsellorCornerScreen({super.key, required this.onBack});
-
-  final VoidCallback onBack;
+  const CounsellorCornerScreen({super.key});
 
   @override
   ConsumerState<CounsellorCornerScreen> createState() => _CounsellorCornerScreenState();
@@ -309,7 +316,7 @@ class _CounsellorCornerScreenState extends ConsumerState<CounsellorCornerScreen>
                 Expanded(
                   child: OutlinedButton(
                     key: const Key('counsellor_back_to_home'),
-                    onPressed: widget.onBack,
+                    onPressed: () => context.go(AppRoutes.studentHome),
                     child: const Text('← Back to home'),
                   ),
                 ),
@@ -366,7 +373,7 @@ class _CounsellorCornerScreenState extends ConsumerState<CounsellorCornerScreen>
           const SizedBox(height: 5),
           DropdownButtonFormField<String>(
             key: Key('counsellor_dropdown_$otherKey'),
-            value: value,
+            initialValue: value,
             items: [
               for (final option in familyAddresserOptions)
                 DropdownMenuItem(value: option, child: Text(option.isEmpty ? '— select —' : option)),
@@ -406,7 +413,7 @@ class _CounsellorCornerScreenState extends ConsumerState<CounsellorCornerScreen>
           const SizedBox(height: 5),
           DropdownButtonFormField<String>(
             key: const Key('counsellor_dropdown_hadTherapy'),
-            value: current.hadTherapy,
+            initialValue: current.hadTherapy,
             items: [
               for (final option in therapyOptions)
                 DropdownMenuItem(value: option, child: Text(option.isEmpty ? '— select —' : option)),

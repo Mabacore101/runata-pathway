@@ -57,8 +57,22 @@ class StudentPathwayStubScreen extends StatelessWidget {
 class StudentNavGridStubScreen extends StatelessWidget {
   const StudentNavGridStubScreen({super.key});
   @override
-  Widget build(BuildContext context) =>
-      const _StubScaffold(title: 'Navigation Grid');
+  Widget build(BuildContext context) => _StubScaffold(
+        title: 'Navigation Grid',
+        // TEMPORARY — same interim-preview pattern as
+        // StudentPathwayStubScreen's own extraActions (see that class's
+        // comment). Counsellor's Corner is Nav-Grid-scoped, not a
+        // Pathway form, so it doesn't belong on that stub — but Nav Grid
+        // itself isn't built yet either, so this is the only reachable
+        // path to it today. Remove once the real Nav Grid tile grid
+        // exists.
+        extraActions: [
+          OutlinedButton(
+            onPressed: () => context.push(AppRoutes.studentCounsellorCorner),
+            child: const Text('Preview: Counsellor\'s Corner'),
+          ),
+        ],
+      );
 }
 
 class _StubScaffold extends StatelessWidget {

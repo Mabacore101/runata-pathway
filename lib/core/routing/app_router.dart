@@ -7,6 +7,7 @@ import '../../features/auth/application/auth_state.dart';
 import '../../features/auth/presentation/choose_role_screen.dart';
 import '../../features/auth/presentation/student_login_screen.dart';
 import '../../features/student/presentation/application_materials_screen.dart';
+import '../../features/student/presentation/counsellor_corner_screen.dart';
 import '../../features/student/presentation/profile_screen.dart';
 import '../../features/student/presentation/grades_screen.dart';
 import '../../features/student/presentation/my_clubs_screen.dart';
@@ -51,6 +52,14 @@ class AppRoutes {
   /// that internally (`ApplicationMaterialsScreen._openDocKey`), same
   /// shape as [studentClubs]'s `ClubsView` sub-state switch.
   static const studentMaterials = '/student/materials';
+
+  /// Counsellor's Corner — Day 6. Unlike Application Materials' 8 docs,
+  /// this is a single, standalone screen with no internal sub-state to
+  /// host — a real, top-level route, reached from Nav Grid once that's
+  /// built (today it's only reachable via a temporary preview link on
+  /// [studentNavGrid]'s stub, same interim pattern [studentPathway]'s
+  /// stub already uses for its 6 forms).
+  static const studentCounsellorCorner = '/student/counsellor-corner';
 }
 
 /// Bridges auth-state changes into go_router's `refreshListenable`.
@@ -141,6 +150,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.studentMaterials,
         builder: (context, state) => const ApplicationMaterialsScreen(),
       ),
+      GoRoute(
+        path: AppRoutes.studentCounsellorCorner,
+        builder: (context, state) => const CounsellorCornerScreen(),
+      ),
     ],
     redirect: (context, state) {
       final isSignedIn = ref.read(authControllerProvider).isSignedIn;
@@ -155,7 +168,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           target == AppRoutes.studentGrades ||
           target == AppRoutes.studentTargetUniversities ||
           target == AppRoutes.studentClubs ||
-          target == AppRoutes.studentMaterials;
+          target == AppRoutes.studentMaterials ||
+          target == AppRoutes.studentCounsellorCorner;
 
       // Both "public-only" screens (Choose Role and the Login form itself)
       // should be skipped once a session already exists — not just Login.
