@@ -6,6 +6,7 @@ import 'package:hive_ce/hive_ce.dart';
 import 'package:runata_pathway/features/student/domain/activity_entry.dart';
 import 'package:runata_pathway/features/student/domain/application_document_state.dart';
 import 'package:runata_pathway/features/student/domain/community_service_entry.dart';
+import 'package:runata_pathway/features/student/domain/counsellor_corner.dart';
 import 'package:runata_pathway/features/student/domain/grade_subject_entry.dart';
 import 'package:runata_pathway/features/student/domain/major_entry.dart';
 import 'package:runata_pathway/features/student/domain/parent_guardian_entry.dart';
@@ -24,6 +25,7 @@ extension HiveRegistrar on HiveInterface {
     registerAdapter(ActivityEntryAdapter());
     registerAdapter(ApplicationDocumentStateAdapter());
     registerAdapter(CommunityServiceEntryAdapter());
+    registerAdapter(CounsellorCornerAdapter());
     registerAdapter(DocumentStatusAdapter());
     registerAdapter(GradeSubjectEntryAdapter());
     registerAdapter(GradeSubjectGroupAdapter());
@@ -49,6 +51,7 @@ extension IsolatedHiveRegistrar on IsolatedHiveInterface {
     registerAdapter(ActivityEntryAdapter());
     registerAdapter(ApplicationDocumentStateAdapter());
     registerAdapter(CommunityServiceEntryAdapter());
+    registerAdapter(CounsellorCornerAdapter());
     registerAdapter(DocumentStatusAdapter());
     registerAdapter(GradeSubjectEntryAdapter());
     registerAdapter(GradeSubjectGroupAdapter());
