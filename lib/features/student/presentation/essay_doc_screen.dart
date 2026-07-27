@@ -402,6 +402,11 @@ class _FeedbackItem extends StatelessWidget {
 }
 
 /// `.poollab` equivalent — a small uppercase label with a trailing rule.
+/// The label wraps rather than overflows for longer doc names (e.g.
+/// "Statement of Purpose / Motivation Letter") — a plain `Text` inside a
+/// `Row` has no width limit to wrap against on its own, so it needs the
+/// `Flexible` wrapper to know it's allowed to break onto a second line
+/// instead of overflowing past the row's edge.
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.label);
   final String label;
@@ -411,10 +416,13 @@ class _SectionLabel extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 11),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            label.toUpperCase(),
-            style: AppFonts.mono(fontSize: 9, color: AppColors.muted, letterSpacing: 0.6),
+          Flexible(
+            child: Text(
+              label.toUpperCase(),
+              style: AppFonts.mono(fontSize: 9, color: AppColors.muted, letterSpacing: 0.6),
+            ),
           ),
           const SizedBox(width: 9),
           Expanded(child: Container(height: 1, color: AppColors.line)),
