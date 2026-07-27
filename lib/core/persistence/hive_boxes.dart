@@ -50,6 +50,11 @@ class HiveBoxes {
   /// no matching [HiveKeys] entry is needed, same reasoning as
   /// [studentUniversityTargets]'s own doc comment.
   static const applicationDocuments = 'application_documents_box';
+
+  /// Counsellor's Corner (Day 6) — single-record box, same pattern as
+  /// [studentPortfolio]/[studentActivitiesReport]. One [CounsellorCorner]
+  /// record per student under [HiveKeys.counsellorCorner].
+  static const counsellorCorner = 'counsellor_corner_box';
 }
 
 /// Fixed keys used inside boxes that hold a single record rather than a
@@ -88,4 +93,9 @@ class HiveKeys {
   /// [StudentPortfolio] record per student, stored under a fixed key in
   /// [HiveBoxes.studentPortfolio].
   static const studentPortfolio = 'portfolio';
+
+  /// Same single-record pattern as [studentPortfolio] — one
+  /// [CounsellorCorner] record per student, stored under a fixed key in
+  /// [HiveBoxes.counsellorCorner].
+  static const counsellorCorner = 'counsellor_corner';
 }

@@ -3,6 +3,7 @@ import 'package:hive_ce/hive_ce.dart';
 
 import '../../../core/persistence/hive_boxes.dart';
 import '../domain/application_document_state.dart';
+import '../domain/counsellor_corner.dart';
 import '../domain/grade_subject_entry.dart';
 import '../domain/student_activities_report.dart';
 import '../domain/student_club_selection.dart';
@@ -86,4 +87,10 @@ final studentPortfolioBoxProvider = Provider<Box<StudentPortfolio>>((ref) {
 final applicationDocumentsBoxProvider =
     Provider<Box<ApplicationDocumentState>>((ref) {
   return Hive.box<ApplicationDocumentState>(HiveBoxes.applicationDocuments);
+});
+
+/// Counsellor's Corner's single-record box (Day 6) — same single-record
+/// pattern as [studentPortfolioBoxProvider].
+final counsellorCornerBoxProvider = Provider<Box<CounsellorCorner>>((ref) {
+  return Hive.box<CounsellorCorner>(HiveBoxes.counsellorCorner);
 });

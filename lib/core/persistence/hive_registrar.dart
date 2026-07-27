@@ -2,6 +2,7 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 
 import '../../hive_registrar.g.dart';
 import '../../features/student/domain/application_document_state.dart';
+import '../../features/student/domain/counsellor_corner.dart';
 import '../../features/student/domain/grade_subject_entry.dart';
 import '../../features/student/domain/student_activities_report.dart';
 import '../../features/student/domain/student_club_selection.dart';
@@ -44,15 +45,15 @@ import 'hive_boxes.dart';
 /// 10 StudentMajorsSettings, 11 UniversityTarget,
 /// 12 StudentClubSelection, 13 ActivityEntry, 14 CommunityServiceEntry,
 /// 15 StudentActivitiesReport, 16 PortfolioWorkEntry, 17 StudentPortfolio,
-/// 18 DocumentStatus, 19 ApplicationDocumentState.
-/// Next free id is **20**.
+/// 18 DocumentStatus, 19 ApplicationDocumentState, 20 CounsellorCorner.
+/// Next free id is **21**.
 ///
 /// IMPORTANT — after adding a NEW @HiveType class (Day 6: DocumentStatus,
-/// ApplicationDocumentState), `dart run build_runner build` needs to run
-/// once to generate each new model's own `.g.dart` file AND regenerate
-/// this file's `hive_registrar.g.dart` import target so it picks up the
-/// new adapters. Nothing here compiles until that's done — same as any
-/// other new @HiveType model.
+/// ApplicationDocumentState, CounsellorCorner), `dart run build_runner
+/// build` needs to run once to generate each new model's own `.g.dart`
+/// file AND regenerate this file's `hive_registrar.g.dart` import target
+/// so it picks up the new adapters. Nothing here compiles until that's
+/// done — same as any other new @HiveType model.
 Future<void> initHive() async {
   await Hive.initFlutter();
   Hive.registerAdapters();
@@ -68,5 +69,6 @@ Future<void> initHive() async {
     Hive.openBox<StudentActivitiesReport>(HiveBoxes.studentActivitiesReport),
     Hive.openBox<StudentPortfolio>(HiveBoxes.studentPortfolio),
     Hive.openBox<ApplicationDocumentState>(HiveBoxes.applicationDocuments),
+    Hive.openBox<CounsellorCorner>(HiveBoxes.counsellorCorner),
   ]);
 }
