@@ -306,7 +306,7 @@ class _CounsellorCornerScreenState extends ConsumerState<CounsellorCornerScreen>
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
+                  child: ElevatedButton(
                     key: const Key('counsellor_save'),
                     onPressed: _onSave,
                     child: const Text('Save'),
