@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_ce/hive_ce.dart';
 
 import '../data/student_grades_repository.dart';
+import '../data/student_hive_providers.dart';
 import '../domain/curriculum.dart';
 import '../domain/grade_subject_entry.dart';
 import '../domain/student_grades_settings.dart';
@@ -208,3 +212,81 @@ GradesFeedback gradesFeedbackBullets(
 
 double _roundTo1(double value) =>
     double.parse(value.toStringAsFixed(1));
+
+/// Mirrors the JS's `gcnt=gG?SEMS.filter(s=>semAvg(gG,s.id)!==null)
+/// .length:0` — counts how many of the 6 semesters have at least one
+/// scored entry. Used by Nav Grid's roadmap "My grades" step and its
+/// 8-tile subtitle, and will be reused by Dashboard tomorrow.
+///
+/// Reads [studentGradesBoxProvider] directly rather than going through
+/// [GradesController] — that controller's own doc comment explains why
+/// per-semester SCORES were deliberately left out of its reactive
+/// `Notifier` state (only track/customSubjects are). That means this
+/// provider is NOT reactive across screens the way profile/tests/clubs
+/// are: a Hive box mutation doesn't notify Riverpod on its own, so this
+/// recomputes fresh only when ITS OWN watchers next rebuild — correct
+/// when navigating back to a screen that reads it (a fresh build reads
+/// fresh data), just not a live cross-screen push while both screens are
+/// mounted simultaneously. Same "pull fresh on next build" behavior
+/// every Hive-backed read in this app already has; called out explicitly
+/// here since this is the first place reading grades from OUTSIDE the
+/// Grades screen itself.
+/// Mirrors the JS's `gcnt=gG?SEMS.filter(s=>semAvg(gG,s.id)!==null)
+/// .length:0` — counts how many of the 6 semesters have at least one
+/// scored entry. Used by Nav Grid's roadmap "My grades" step and its
+/// 8-tile subtitle, and will be reused by Dashboard tomorrow.
+///
+/// **A `Notifier`, not a plain `Provider` — this genuinely needs to be,
+/// not a style choice.** An earlier version of this file used a plain
+/// `Provider<int>` that read [studentGradesBoxProvider] via `ref.watch`,
+/// on the assumption that would recompute whenever a consumer next
+/// rebuilt (e.g. navigating back to Home from Grades). That assumption
+/// was wrong, confirmed by manual testing: entering a grade never marked
+/// the roadmap step done, even after returning to Home. The reason:
+/// Hive's `Box` object reference never changes — mutations happen
+/// in-place — so from Riverpod's perspective the watched value never
+/// changed, and the count was computed once and cached for the rest of
+/// the app's lifetime, not just "until the next rebuild." Every OTHER
+/// roadmap signal (profile/targets/clubs/tests/materials) goes through a
+/// proper `Notifier` whose `state` is explicitly reassigned on save,
+/// which Riverpod correctly propagates — grades scores are the one piece
+/// of data in this app read directly from Hive with no controller in
+/// between (see [GradesController]'s own doc comment for why), which is
+/// exactly why this was the one place this bug could hide. Fixed by
+/// subscribing directly to Hive's own `Box.watch()` change stream, so
+/// this recomputes the instant a score is actually written, regardless
+/// of whether/when some other widget happens to rebuild.
+final gradeSemestersFilledCountProvider =
+    NotifierProvider<GradeSemestersFilledCountNotifier, int>(
+  GradeSemestersFilledCountNotifier.new,
+);
+
+class GradeSemestersFilledCountNotifier extends Notifier<int> {
+  StreamSubscription<BoxEvent>? _subscription;
+
+  @override
+  int build() {
+    final box = ref.watch(studentGradesBoxProvider);
+
+    // Defensive: build() should only run once in practice (its one
+    // watched dependency, the box itself, never changes value), but
+    // cancel-then-resubscribe is correct regardless if it ever does.
+    _subscription?.cancel();
+    _subscription = box.watch().listen((_) {
+      state = _countFilledSemesters(box);
+    });
+    ref.onDispose(() => _subscription?.cancel());
+
+    return _countFilledSemesters(box);
+  }
+
+  int _countFilledSemesters(Box<GradeSubjectEntry> box) {
+    final allEntries = box.values.toList();
+    var count = 0;
+    for (final code in SemesterCode.all) {
+      final semesterEntries = allEntries.where((e) => e.semesterCode == code).toList();
+      if (semesterAverage(semesterEntries) != null) count++;
+    }
+    return count;
+  }
+}
