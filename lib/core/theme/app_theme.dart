@@ -46,6 +46,30 @@ class AppColors {
   static const amberSoft = Color(0xFFF9EBD2);
   static const red = Color(0xFFC2492E);
   static const redSoft = Color(0xFFF9E4DE);
+
+  // Dashboard category colors (`.b-teal`/`.b-purple`/`.b-orange`/
+  // `.b-green`/`.b-pink`/`.b-blue` in the CSS) — used by the side menu,
+  // the 6 Overview mini-stats, and each detail panel's own accent.
+  // `.b-teal`/`.b-orange`'s accent hex values (`#00857D`/`#DF7B0C`)
+  // already match [teal]/[orangeDeep] exactly, so those two categories
+  // reuse the existing tokens rather than adding near-duplicates; their
+  // background tints (`#E4F4F2`/`#FFEBD6`) are close enough to
+  // [tealSoft]/[orangeSoft] to reuse too. The other 4 categories
+  // (purple/green/pink/blue) have no existing equivalent — `.b-green`
+  // specifically is a distinct "grades category" color (`#1FA971`),
+  // NOT the same green as the status [green] above (`#0E8C6B`) used for
+  // "done"/"met" indicators elsewhere in the app — kept separate rather
+  // than reused, since conflating "this is the grades category" with
+  // "this thing is done" would be a real semantic mixup, not just a
+  // cosmetic one.
+  static const dashPurple = Color(0xFF6B4EF0);
+  static const dashPurpleSoft = Color(0xFFEDE9FE);
+  static const dashGreen = Color(0xFF1FA971);
+  static const dashGreenSoft = Color(0xFFDFF5EA);
+  static const dashPink = Color(0xFFE0518D);
+  static const dashPinkSoft = Color(0xFFFCE4EF);
+  static const dashBlue = Color(0xFF2E86DE);
+  static const dashBlueSoft = Color(0xFFE3F0FC);
 }
 
 /// Font family helpers backed by `google_fonts`, replacing the CSS
