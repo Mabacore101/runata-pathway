@@ -397,36 +397,48 @@ items plus new capacity-engine complexity), not a new slip.
 - [x] Tests — thorough throughout, including the dedicated Section B
       end-to-end cross-check against Day 4 (item 4)
 
-**Day 6 — Application Materials part 2 + remaining pieces — 🔜 TODO**
-- [ ] 5 shared essay sections — one shared template (`renderMatDoc`
-      equivalent), different `RUBRIC` criteria per type. The criteria
-      themselves are real content (regex keyword checks, word-count
-      ranges, paragraph minimums) — genuine data to port, not placeholder
-      logic. `DOC_INFO`'s per-essay explanatory copy is load-bearing UX
-      text, same category as Day 5's portfolio explainer — port
-      faithfully. "Mark as Ready" bug: see corrected description above.
-- [ ] Recommendation Letters (mark uploaded / undo toggle) — shares the
-      same template as the essays via a different `kind`, not a separate
-      screen in the original site
-- [ ] Counsellor's Corner (plain form) — confirmed genuinely simple by
-      direct inspection, matches field/datatype doc closely, reuses Day
-      2's `cns`/`ctext`/`cwho` helper shapes
-- [ ] Pathways (external link, new tab) — confirmed genuinely small,
-      list + detail view
-- [ ] **Nav Grid — corrected scope: this is NOT a new screen.** It's
-      finishing Day 1's `student_home_screen.dart`, which was deliberately
-      left as a 3-card simplification pending today (Day 1's own note said
-      as much). Open and extend that existing file — CTA button + roadmap
-      tracker + 8-tile grid all belong to the same screen in the original
-      site. See day6-trimmed-source.md finding 1.
-- [ ] **Dashboard — corrected scope: NOT a quick "door," budget real time.**
-      7-panel screen (Overview/Target/Tests/Fit/Grades/Activities/
-      Materials) with a completion-ring and next-steps logic, reading
-      from every prior day's data (Days 2–5). No new business logic —
-      it's aggregation/re-display only — but it's genuine screen-building
-      work across every existing feature's read side. See
-      day6-codebase-reference.md's data-sources table for where each
-      panel's data already lives.
+**Day 6 — Application Materials part 2 + remaining pieces — 🔶 PARTIALLY DONE (items 1–6 of 8)**
+- [x] 5 shared essay sections — one shared model (`ApplicationDocumentState`),
+      not 6 near-identical ones, matching `renderMatDoc`'s single-function-
+      handles-all-kinds shape. `RUBRIC` ported faithfully via
+      `document_rubric.dart`, including a genuinely subtle catch: the
+      "personal" essay's length criterion has a label/logic mismatch in the
+      ORIGINAL SITE ITSELF (label says 450–650 words, actual check allows up
+      to 700) — correctly preserved as-is rather than silently fixed, with
+      the mismatch documented in code.
+- [x] "Mark as Ready" — confirmed and verified fully unconditional
+      (`markReady()`), matching the corrected bug description exactly: no
+      non-empty check, no criteria check, a bare status flip.
+- [x] Recommendation Letters — same shared model/template, upload-kind,
+      `toggleSubmitted()` confirmed as a bare toggle with no side effects.
+- [x] Counsellor's Corner — confirmed genuinely simple as expected.
+- [x] Pathways — confirmed genuinely small as expected.
+- [x] **Nav Grid — done, pulled forward from a planned-separate session.**
+      `student_home_screen.dart` now fully replaces Day 1's 3-card stub:
+      Dashboard CTA (linking to the already-existing Day 1 stub route,
+      no new routing needed), 6-step roadmap with tested done/next/later
+      logic, full 8-tile grid. Coordinator-lock banner and Parent-mode
+      correctly omitted (Staff/Parent roles don't exist yet), documented
+      in the file itself.
+      **Bonus finding:** building this item's "done" signals already
+      produced real reusable cross-feature aggregation providers —
+      `materialsStartedCountProvider` (faithful port of `matStartedCount`,
+      combining all 4 doc kinds) and `MaterialsContext`/`materials_context.dart`
+      (faithful port of `matCtx()`, the essay-scoring context) — meaning
+      item 7 (Dashboard) has more groundwork already laid than expected.
+      See the refreshed `day6-codebase-reference.md` for the confirmed
+      data-sources table.
+- [ ] **Dashboard (item 7) — scope narrower than originally estimated,
+      given the above.** The Overview panel's completion ring + 6
+      mini-stats can likely be built almost entirely from providers that
+      already exist. Remaining real work: the 6 detail panels' own
+      presentation (Target/Tests/Fit/Grades/Activities/Materials tabs)
+      and the SVG completion-ring/trend-arrow widgets, which have no
+      existing equivalent yet. Still budget real time — narrower scope,
+      not zero scope.
+- [ ] Cross-check everything against real data end-to-end (item 8) — do
+      this last, once item 7 is verified, same "verify the aggregate
+      last" discipline as every prior day's cascade/cross-check step.
 - [ ] Tests alongside each piece (per Section 7), same rhythm as Days 2–5
 
 **Day 7 — Integration + polish + buffer**
