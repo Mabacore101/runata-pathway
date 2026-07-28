@@ -290,3 +290,49 @@ class GradeSemestersFilledCountNotifier extends Notifier<int> {
     return count;
   }
 }
+
+/// Dashboard's version of the same underlying need [gradeSemestersFilledCountProvider]
+/// serves — but exposing the FULL [GradesFeedback] (every filled semester's
+/// average, in order, plus the generated trend bullets) rather than just a
+/// count, since Dashboard's Grades panel needs the latest average and the
+/// up/down/steady trend arrow, not just "how many."
+///
+/// A separate `Notifier`/box subscription from
+/// [GradeSemestersFilledCountNotifier] rather than deriving one from the
+/// other — both watch the same box independently. Slightly more
+/// subscription overhead than sharing one, but keeps the already-working,
+/// already-tested count provider untouched rather than refactoring it
+/// while fixing an unrelated screen; the overhead itself is negligible
+/// for a small local Hive box.
+final gradesFeedbackProvider = NotifierProvider<GradesFeedbackNotifier, GradesFeedback>(
+  GradesFeedbackNotifier.new,
+);
+
+class GradesFeedbackNotifier extends Notifier<GradesFeedback> {
+  StreamSubscription<BoxEvent>? _subscription;
+
+  @override
+  GradesFeedback build() {
+    final box = ref.watch(studentGradesBoxProvider);
+
+    _subscription?.cancel();
+    _subscription = box.watch().listen((_) {
+      state = _compute(box);
+    });
+    ref.onDispose(() => _subscription?.cancel());
+
+    return _compute(box);
+  }
+
+  GradesFeedback _compute(Box<GradeSubjectEntry> box) {
+    final allEntries = box.values.toList();
+    final bySemester = [
+      for (final semester in SemesterInfo.all)
+        MapEntry(
+          semester,
+          allEntries.where((e) => e.semesterCode == semester.code).toList(),
+        ),
+    ];
+    return gradesFeedbackBullets(bySemester);
+  }
+}
