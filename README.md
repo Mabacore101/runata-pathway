@@ -18,7 +18,7 @@ on those roles.
 - [x] Day 3 — Target Universities
 - [x] Day 4 — My Clubs
 - [x] Day 5 — Application Materials (part 1)
-- [ ] Day 6 — Application Materials (part 2) + remaining pieces
+- [x] Day 6 — Application Materials (part 2), Counsellor's Corner, Pathways, Nav Grid, Dashboard
 - [ ] Day 7 — Integration, polish, device pass
 
 ## Roles
@@ -45,6 +45,7 @@ lib/features/
 | Local storage | Hive CE (`hive_ce` / `hive_ce_flutter`) — flexible objects/lists (profile, tests, grades), not relational. Swapped in from the original `hive`/`hive_flutter` packages during Day 2 after finding those unmaintained and incompatible with a current `build_runner` |
 | Code generation | `build_runner` + `hive_ce_generator` — generates Hive TypeAdapters (`*.g.dart`) and the adapter registrar (`lib/hive_registrar.g.dart`); both are checked into version control per Hive CE's own convention, not hand-edited |
 | Backend | Local-only for now — no Supabase project connected yet |
+| External links | `url_launcher` — Pathways' "Open the document" button, added Day 6 (not a dependency before this) |
 | Testing | `flutter_test` + `mocktail` + `hive_ce_test` |
 
 ## Getting started
@@ -169,6 +170,60 @@ screen specifically, the major-based suggestion banner, and the
 suitability table + explainer (previously dead code in the original
 site, surfaced properly here — see deviation below).
 
+Day 6 adds the 5 remaining Application Materials docs (Personal
+Statement, Common App Essay, Study Plan, Statement of Purpose, CV) and
+Recommendation Letters, both built on one shared template rather than 6
+near-identical screens — the `RUBRIC`/`scoreDoc` criteria-scoring engine
+tested against real, hand-written sample essays (not just that the
+screen renders), the stale-until-refreshed feedback panel (typing
+doesn't live-update the checklist — only "Check feedback"/"Mark as
+ready" do, matching the original JS's actual re-render behavior), and
+"Mark as ready" as the fully unconditional flip it actually is (see
+Known bugs above). Counsellor's Corner adds a flat 24-field record that
+genuinely autosaves on every change (confirmed by the JS's own on-screen
+copy, "It saves automatically" — settled directly rather than inferred,
+unlike Portfolio/Activities Report's split last week) and a
+dropdown-with-conditional-"Other"-field pattern built fresh, since no
+prior screen in this app had one. Pathways adds a static, read-only
+country-guide list — no Hive model, no controller, since
+`beLoadPathways()` always falls back to 2 hardcoded entries with no
+Supabase connection configured.
+
+Nav Grid replaces Day 1's 3-card placeholder with the real homepage: a
+6-step roadmap with genuine done/next/later logic (a step's own
+completion always wins over its position — tested including the
+specific case where a *later* step finishes before an *earlier* one),
+and the full 8-tile grid. Manual QA caught a real reactivity bug here,
+not just a display one: the grades-filled signal read Hive directly
+with no reactive controller in between, so entering a grade never
+updated the roadmap without a full app restart — fixed by subscribing
+to Hive's own `Box.watch()` stream instead of relying on Riverpod's
+normal dependency-diffing, with a regression test that writes to the
+box while the screen is already rendered (the exact scenario that was
+broken).
+
+Dashboard adds all 7 panels (Overview + Target/Tests/Fit/Grades/
+Activities/Materials) reading from every controller in the app at
+once, a hand-painted completion-ring `CustomPainter` (not an SVG
+approximation), and a Fit computation combining Target Universities +
+My Tests + the university catalog that had no existing equivalent
+before this. The completion percentage and "next 3 steps" queue are
+deliberately pure, Riverpod-free functions, tested directly against
+hand-picked boolean combinations rather than through the widget tree.
+Manual QA caught a second real bug here: the 6 Overview mini-stat tiles
+weren't clickable, even though the JS shares one click handler between
+them and the side menu — fixed, with all 6 tiles individually
+regression-tested.
+
+Day 6 closes with a full end-to-end cross-check: real data filled in
+across every feature simultaneously, confirming Nav Grid and
+Dashboard's overlapping numbers agree exactly, that Dashboard's
+completion ring and Nav Grid's roadmap are *correctly* built from two
+different 6-signal sets (not a bug when they disagree), and that
+everything survives a full app restart together — the first time this
+many features have all been exercised against real data in one sitting
+rather than individually.
+
 ## Known bugs carried over from the original site
 
 The live site has a handful of quirks. Default stance is **replicate for
@@ -179,8 +234,12 @@ the relevant day's work:
 - My Grades — manually-typed scores above 100 aren't clamped, corrupting
   the average calculation (upper bound only — see deviation below for the
   lower bound)
-- Application Materials (essay sections) — "Mark as Ready" only checks for
-  non-empty text, not actual criteria
+- Application Materials (essay sections) — "Mark as Ready" is fully
+  unconditional: no non-empty check, no criteria check, nothing. Originally
+  planned as "only checks for non-empty text," but direct Day 6 source
+  tracing found the actual JS handler doesn't check anything at all —
+  replicated as genuinely unconditional, not the milder version first
+  assumed.
 
 ## Known limitations of this rebuild
 
@@ -201,7 +260,9 @@ than fixed now:
   Clubs' grade bands), clear app storage between account switches rather
   than just signing out and back in. A real fix means keying every
   box/record by `studentId`, touching every repository built so far — a
-  foundational change, not a My Clubs–scoped one.
+  foundational change, not a My Clubs–scoped one. Re-surfaced during Day 6
+  manual QA (Dashboard's Activities count showing stale data after
+  switching test accounts) — same underlying limitation, not a new one.
 
 ### Deliberate deviations from the original site (Day 2)
 
@@ -344,6 +405,77 @@ as silent differences:
   explicitly so switching tabs with no visible effect on either doc
   reads as expected, not broken.
 
+### Deliberate deviations from the original site (Day 6)
+
+- **The scoring context's fallback strings are display-only, never fed
+  into `scoreDoc`.** The JS's `matCtx()` reuses one placeholder string
+  ("your major"/"your target country") for both the "tailored to X" UI
+  line *and* the actual RUBRIC regex matching when no anchor major/
+  target exists — meaning the original would technically search essay
+  text for the literal word "your." Kept the placeholder for display,
+  but pass `null` into scoring in that case, since matching a stray
+  coincidental word was never the intent.
+- **Personal Statement's word-count bound is 450–700, not the 450–650
+  its own label says.** Found via source tracing, not assumed —
+  preserved verbatim as a real mismatch already present in the original
+  JS, tested explicitly at the 449/450/700/701 boundaries.
+- **Recommendation Letters' clubs-count on Dashboard is a direct
+  arithmetic equivalent, not the JS's own day-by-day schedule engine.**
+  `studentPlan`'s `Set`-based dedup only exists because a club can run
+  on multiple session days; since `rankedOthers` is already guaranteed
+  duplicate-free by `ClubRankingController`'s own guard, the distinct
+  count is simply `1 (required club) + rankedOthers.length` — exact,
+  not an approximation, without needing to port the full schedule-
+  assignment algorithm.
+- **Dashboard's Fit panel omits the JS's optional `f.detail` string.**
+  `fit_status.dart` (built Day 3) only ever exposed `label`/`tier`, never
+  a `detail` field — shows the fit chip + university name, not the
+  extra requirements text, rather than retroactively extending a
+  model built two days earlier.
+- **Dashboard's completion ring and Nav Grid's roadmap deliberately use
+  two different 6-signal sets, not one shared list.** The JS's own
+  `renderDashboard()`/`renderHome()` genuinely differ: the roadmap
+  includes Profile but not Activities; the ring includes Activities but
+  not Profile. Kept as two separate signatures rather than unified into
+  one shared shape, so the distinction stays visible in the code, not
+  just in a comment — confirmed by manual cross-check that the two
+  screens are *expected* to disagree here, not a bug when they do.
+- **The Fit panel checks for an IELTS score before checking whether any
+  target actually needs one.** A real quirk in the original JS (it asks
+  a student to add IELTS even if every target they've added is a
+  non-IELTS route) — confirmed faithful rather than reordered, by
+  deliberate choice: consistency with the live app mattered more here
+  than smoothing over one edge case.
+- **Pathways' flag icons are the real source images, not emoji.** The
+  JS embeds actual base64 PNG flags; re-decoding those as Dart assets
+  for two icons felt like unwarranted overhead until the real
+  `germany.png`/`china.png` files were provided directly, at which point
+  faithful reproduction became the easy choice, not a compromise.
+- **Pathways' route is named `studentCountryPathways`, not
+  `studentPathways`.** This rebuild already has an unrelated
+  `studentPathway` (singular) route — Day 1's own name for the 6-form
+  hub stub (one of that day's 3 homepage entry points), not the
+  original site's naming. The JS's "Pathways" (country guides) and this
+  rebuild's "Pathway" (form hub) are two different things that happen
+  to almost share a name; picked a clearly distinct constant to avoid a
+  one-letter-typo collision on top of an already-confusing coincidence.
+- **The grades-filled signal is a Hive `Notifier` subscribed to
+  `Box.watch()`, not a plain derived `Provider`.** Found via manual QA,
+  not planned upfront: a plain `Provider` watching the grades box
+  looked correct (and passed every automated test) but silently never
+  recomputed after its first read, since a Hive `Box` object reference
+  never changes even when its contents do — entering a grade never
+  updated Nav Grid without a full restart. This is a Flutter/Riverpod-
+  specific reactivity bug, not a deviation from the JS (which has no
+  Hive-equivalent concept at all) — fixed by subscribing to the box's
+  own change stream directly.
+- **Dashboard's 6 Overview mini-stat tiles are clickable shortcuts,
+  matching the JS exactly, not a static display.** Missed on first
+  build, found via manual QA: the JS shares one `[data-dv]` click
+  handler between the side-menu buttons and the mini-stat tiles, so
+  both are meant to switch panels. Fixed to wire all 6 tiles to the
+  same panel-switching state the side menu uses.
+
 ## Project structure
 
 ```
@@ -352,13 +484,29 @@ lib/
     theme/        — design tokens + ThemeData, mined from the original CSS
     routing/      — go_router config and route guards
     persistence/  — Hive setup (initHive(), box name constants)
+  shared/         — widgets used across more than one feature (e.g. FitChip,
+                    the fit-met/track/work/none status chip shared by the
+                    Application Materials Hub and Dashboard — added Day 6
+                    once a second call site made the duplication concrete)
   features/
     auth/         — Choose Role, Login, session state (shared entry point above all roles)
     student/      — Student-role screens
-      domain/       — Hive models (Profile, Tests, Grades, curriculum data, Target Universities, Clubs, Application Materials) + pure scheduling logic (club/day data tables, week-preview algorithm)
+      domain/       — Hive models (Profile, Tests, Grades, curriculum data,
+                      Target Universities, Clubs, Application Materials,
+                      Application Documents, Counsellor's Corner) + pure
+                      logic (scheduling data tables, week-preview algorithm,
+                      the RUBRIC/scoreDoc essay-scoring engine, Dashboard's
+                      completion-percent/next-steps functions) + static
+                      catalog data (curriculum, universities, clubs, Pathways)
       data/         — repositories wrapping Hive boxes
-      application/  — Riverpod controllers (business logic, validation)
-      presentation/ — screens
+      application/  — Riverpod controllers (business logic, validation,
+                      cross-controller derived state — e.g. Dashboard's Fit/
+                      Activities-summary providers, the shared essay-scoring
+                      context)
+      presentation/ — screens (including the shared `EssayDocScreen`
+                      template for all 5 essay docs + Recommendation
+                      Letters, Counsellor's Corner, Pathways, the extended
+                      Home screen/Nav Grid, and Dashboard's 7 panels)
     parent/       — (not yet built)
     staff/        — (not yet built)
   hive_registrar.g.dart — generated Hive adapter registrar (checked in, not hand-edited)
