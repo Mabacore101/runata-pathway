@@ -8,6 +8,7 @@ import '../../features/auth/presentation/choose_role_screen.dart';
 import '../../features/auth/presentation/student_login_screen.dart';
 import '../../features/student/presentation/application_materials_screen.dart';
 import '../../features/student/presentation/counsellor_corner_screen.dart';
+import '../../features/student/presentation/dashboard_screen.dart';
 import '../../features/student/presentation/pathways_screen.dart';
 import '../../features/student/presentation/profile_screen.dart';
 import '../../features/student/presentation/grades_screen.dart';
@@ -132,7 +133,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.studentDashboard,
-        builder: (context, state) => const StudentDashboardStubScreen(),
+        builder: (context, state) => const DashboardScreen(),
       ),
       GoRoute(
         path: AppRoutes.studentPathway,

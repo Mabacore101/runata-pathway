@@ -4,13 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../../../core/routing/app_router.dart';
 
 /// Day 1 stubs — reachable via real navigation, no real content yet.
-/// Dashboard/Pathway/Nav Grid content ships on later days in the 7-day
-/// plan once the 6 Pathway forms they summarize/link to actually exist.
-class StudentDashboardStubScreen extends StatelessWidget {
-  const StudentDashboardStubScreen({super.key});
-  @override
-  Widget build(BuildContext context) => const _StubScaffold(title: 'Dashboard');
-}
+/// Pathway/Nav Grid content ships once the forms they summarize/link to
+/// actually exist. Dashboard's own stub is gone — `AppRoutes.
+/// studentDashboard` now routes to the real `DashboardScreen`.
 
 class StudentPathwayStubScreen extends StatelessWidget {
   const StudentPathwayStubScreen({super.key});
