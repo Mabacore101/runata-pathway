@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/fit_chip.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/clubs_controller.dart';
 import '../application/dashboard_data.dart';
@@ -17,6 +18,8 @@ import '../domain/application_materials_catalog.dart';
 import '../domain/dashboard_summary.dart';
 import '../domain/fit_status.dart';
 import '../domain/student_grades_settings.dart';
+import '../domain/test_entry.dart';
+import '../domain/university_target.dart';
 
 /// Day 6 item 7: Dashboard. Mirrors the JS's `renderDashboard()` — a
 /// header (avatar, greeting, subtitle, completion ring), a 7-item side
@@ -28,10 +31,11 @@ import '../domain/student_grades_settings.dart';
 /// is a plain `ConsumerStatefulWidget` holding one `DashboardPanel` field,
 /// not a Riverpod-tracked selection.
 ///
-/// **STAGED BUILD — only the Overview panel is complete.** The other 6
-/// (Target/Tests/Fit/Grades/Activities/Materials) are placeholders,
-/// built in the very next step. The shell itself (header, ring, side
-/// menu, panel-switching) is fully done and tested at this stage.
+/// **All 7 panels are complete** — Overview (6 mini-stats + next-3-steps)
+/// plus the 6 detail panels (Target/Tests/Fit/Grades/Activities/
+/// Materials), each mirroring its own `panels.<key>` template in the JS
+/// verbatim (chip lists, big-number + subtitle layout, the progress bar,
+/// and each panel's own "Open X →" button routing to the right screen).
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
@@ -181,14 +185,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
             const SizedBox(height: 12),
             _buildPanel(
-              targetsCount: targets.length,
-              testsCount: tests.length,
+              targets: targets,
+              tests: tests,
               gradesFeedback: gradesFeedback,
               activities: activities,
               materialsStarted: materialsStarted,
               fit: fit,
               ielts: ielts,
-              percent: percent,
               nextSteps: nextSteps,
             ),
             const SizedBox(height: 16),
@@ -207,47 +210,42 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildPanel({
-    required int targetsCount,
-    required int testsCount,
+    required List<UniversityTarget> targets,
+    required List<TestEntry> tests,
     required GradesFeedback gradesFeedback,
     required DashboardActivitiesSummary activities,
     required int materialsStarted,
     required DashboardFit fit,
     required double? ielts,
-    required int percent,
     required List<DashboardNextStep> nextSteps,
   }) {
-    if (_panel == DashboardPanel.overview) {
-      return _OverviewPanel(
-        targetsCount: targetsCount,
-        testsCount: testsCount,
-        lastAverage: gradesFeedback.filledAverages.isEmpty
-            ? null
-            : gradesFeedback.filledAverages.last.average,
-        activitiesTotal: activities.total,
-        materialsStarted: materialsStarted,
-        hasFitData: targetsCount > 0 && ielts != null,
-        nextSteps: nextSteps,
-        onOpenStep: (kind) => context.push(kind.route),
-      );
+    switch (_panel) {
+      case DashboardPanel.overview:
+        return _OverviewPanel(
+          targetsCount: targets.length,
+          testsCount: tests.length,
+          lastAverage: gradesFeedback.filledAverages.isEmpty
+              ? null
+              : gradesFeedback.filledAverages.last.average,
+          activitiesTotal: activities.total,
+          materialsStarted: materialsStarted,
+          hasFitData: targets.isNotEmpty && ielts != null,
+          nextSteps: nextSteps,
+          onOpenStep: (kind) => context.push(kind.route),
+        );
+      case DashboardPanel.target:
+        return _TargetPanel(targets: targets, onOpen: () => context.push(AppRoutes.studentTargetUniversities));
+      case DashboardPanel.tests:
+        return _TestsPanel(tests: tests, onOpen: () => context.push(AppRoutes.studentTests));
+      case DashboardPanel.fit:
+        return _FitPanel(fit: fit, onOpen: () => context.push(AppRoutes.studentTargetUniversities));
+      case DashboardPanel.grades:
+        return _GradesPanel(feedback: gradesFeedback, onOpen: () => context.push(AppRoutes.studentGrades));
+      case DashboardPanel.activities:
+        return _ActivitiesPanel(summary: activities, onOpen: () => context.push(AppRoutes.studentMaterials));
+      case DashboardPanel.materials:
+        return _MaterialsPanel(started: materialsStarted, onOpen: () => context.push(AppRoutes.studentMaterials));
     }
-
-    // Placeholder for the 6 detail panels — built in the next step.
-    final item = _menuItems.firstWhere((m) => m.panel == _panel);
-    return Container(
-      key: Key('dashboard_panel_placeholder_${_panel.name}'),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.line),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        '${item.label} panel — coming next',
-        style: AppFonts.body(color: AppColors.muted),
-      ),
-    );
   }
 }
 
@@ -673,6 +671,420 @@ class _NextStepButton extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// `.dpTitle` equivalent — shared by every detail panel.
+class _PanelTitle extends StatelessWidget {
+  const _PanelTitle(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Text(text, style: AppFonts.display(fontSize: 20, weight: FontWeight.w800, color: AppColors.ink)),
+    );
+  }
+}
+
+/// The card wrapper every detail panel shares (same shape as the
+/// Overview panel's own outer Container).
+class _PanelCard extends StatelessWidget {
+  const _PanelCard({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [child]),
+    );
+  }
+}
+
+/// `.dbig` equivalent — a big colored number/value with a muted subtitle
+/// underneath, in the panel's own accent color.
+class _BigStat extends StatelessWidget {
+  const _BigStat({required this.value, required this.subtitle, required this.accent});
+  final String value;
+  final String subtitle;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(value, style: AppFonts.display(fontSize: 40, weight: FontWeight.w800, color: accent)),
+          const SizedBox(height: 4),
+          Text(subtitle, style: AppFonts.body(fontSize: 12.5, weight: FontWeight.w600, color: AppColors.muted)),
+        ],
+      ),
+    );
+  }
+}
+
+/// `.dgoBtn` equivalent — every detail panel's own "Open X →" button.
+class _GoButton extends StatelessWidget {
+  const _GoButton({super.key, required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: SizedBox(width: double.infinity, child: ElevatedButton(onPressed: onTap, child: Text(label))),
+    );
+  }
+}
+
+/// `.dchip` equivalent.
+class _Chip extends StatelessWidget {
+  const _Chip({required this.label, required this.accent, required this.accentSoft});
+  final String label;
+  final Color accent;
+  final Color accentSoft;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
+      decoration: BoxDecoration(color: accentSoft, borderRadius: BorderRadius.circular(20)),
+      child: Text(
+        label,
+        style: AppFonts.body(fontSize: 11, weight: FontWeight.w700, color: accent),
+      ),
+    );
+  }
+}
+
+/// "Target universities" detail panel.
+class _TargetPanel extends StatelessWidget {
+  const _TargetPanel({required this.targets, required this.onOpen});
+  final List<UniversityTarget> targets;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    const accent = AppColors.teal;
+    const accentSoft = AppColors.tealSoft;
+    final shown = targets.take(8).toList();
+    final extra = targets.length - shown.length;
+
+    return _PanelCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _PanelTitle('Target universities'),
+          _BigStat(value: '${targets.length}', subtitle: 'on your list', accent: accent),
+          if (targets.isEmpty)
+            Text('No targets yet.', style: AppFonts.body(fontSize: 11.5, color: AppColors.muted))
+          else
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final t in shown) _Chip(label: t.university, accent: accent, accentSoft: accentSoft),
+                if (extra > 0) _Chip(label: '+$extra', accent: accent, accentSoft: accentSoft),
+              ],
+            ),
+          _GoButton(
+            key: const Key('dashboard_panel_open_target'),
+            label: 'Open Target universities →',
+            onTap: onOpen,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// `TestType` → display label — mirrors how test types read elsewhere in
+/// this app (e.g. Nav Grid's roadmap description: "IELTS, CSCA, SAT").
+String _testTypeLabel(TestType type) => switch (type) {
+      TestType.ielts => 'IELTS',
+      TestType.toefl => 'TOEFL',
+      TestType.duolingo => 'Duolingo',
+      TestType.sat => 'SAT',
+      TestType.csca => 'CSCA',
+      TestType.hsk => 'HSK',
+      TestType.ap => 'AP',
+      TestType.other => 'Other',
+    };
+
+/// "My tests" detail panel.
+class _TestsPanel extends StatelessWidget {
+  const _TestsPanel({required this.tests, required this.onOpen});
+  final List<TestEntry> tests;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    const accent = AppColors.dashPurple;
+    const accentSoft = AppColors.dashPurpleSoft;
+
+    return _PanelCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _PanelTitle('My tests'),
+          _BigStat(value: '${tests.length}', subtitle: 'added', accent: accent),
+          if (tests.isEmpty)
+            Text('None added yet.', style: AppFonts.body(fontSize: 11.5, color: AppColors.muted))
+          else
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final t in tests)
+                  _Chip(
+                    label:
+                        '${_testTypeLabel(t.type)}${(t.latest != null && t.latest!.trim().isNotEmpty) ? ' ${t.latest}' : ''}',
+                    accent: accent,
+                    accentSoft: accentSoft,
+                  ),
+              ],
+            ),
+          _GoButton(key: const Key('dashboard_panel_open_tests'), label: 'Open My tests →', onTap: onOpen),
+        ],
+      ),
+    );
+  }
+}
+
+/// Maps `FitTier` (fit_status.dart) → `FitTone` (the shared chip widget)
+/// — both enums have identically-named values, so this is a direct
+/// 1:1 mapping, not a judgment call.
+FitTone _fitTierToTone(FitTier tier) => switch (tier) {
+      FitTier.met => FitTone.met,
+      FitTier.track => FitTone.track,
+      FitTier.work => FitTone.work,
+      FitTier.none => FitTone.none,
+    };
+
+/// "Fit" detail panel — mirrors the same 4 `fitInner` branches
+/// `dashboardFitProvider` already computes.
+class _FitPanel extends StatelessWidget {
+  const _FitPanel({required this.fit, required this.onOpen});
+  final DashboardFit fit;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final mutedStyle = AppFonts.body(fontSize: 12.5, color: AppColors.muted, height: 1.4);
+
+    Widget body;
+    switch (fit.kind) {
+      case DashboardFitKind.noTargets:
+        body = Text('Pick a target university first.', style: mutedStyle);
+      case DashboardFitKind.noIelts:
+        body = RichText(
+          text: TextSpan(
+            style: mutedStyle,
+            children: [
+              const TextSpan(text: 'Add your '),
+              TextSpan(text: 'IELTS', style: mutedStyle.copyWith(fontWeight: FontWeight.w700)),
+              const TextSpan(text: ' in My tests to unlock fit.'),
+            ],
+          ),
+        );
+      case DashboardFitKind.found:
+        body = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FitChip(label: fit.status!.label, tone: _fitTierToTone(fit.status!.tier)),
+            const SizedBox(height: 6),
+            Text(fit.universityName!, style: mutedStyle),
+          ],
+        );
+      case DashboardFitKind.nonIeltsRoute:
+        body = Text(
+          'Your targets use non-IELTS routes (e.g. rapor / UTBK / HSK).',
+          style: mutedStyle,
+        );
+    }
+
+    return _PanelCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _PanelTitle('Fit'),
+          Padding(padding: const EdgeInsets.only(bottom: 6), child: body),
+          _GoButton(
+            key: const Key('dashboard_panel_open_fit'),
+            label: 'Open Target universities →',
+            onTap: onOpen,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "My grades" detail panel.
+class _GradesPanel extends StatelessWidget {
+  const _GradesPanel({required this.feedback, required this.onOpen});
+  final GradesFeedback feedback;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    const accent = AppColors.dashGreen;
+    final avgs = feedback.filledAverages;
+
+    Widget content;
+    if (avgs.isEmpty) {
+      content = Text(
+        'Record your marks after each report.',
+        style: AppFonts.body(fontSize: 11.5, color: AppColors.muted),
+      );
+    } else {
+      final last = avgs.last.average;
+      final trendText = avgs.length >= 2
+          ? (last > avgs[avgs.length - 2].average + 0.5
+              ? '↑'
+              : last < avgs[avgs.length - 2].average - 0.5
+                  ? '↓'
+                  : '→')
+          : '';
+      final trendColor = trendText == '↑'
+          ? AppColors.green
+          : trendText == '↓'
+              ? AppColors.amber
+              : accent;
+
+      content = Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  last.toStringAsFixed(1),
+                  style: AppFonts.display(fontSize: 40, weight: FontWeight.w800, color: accent),
+                ),
+                if (trendText.isNotEmpty) ...[
+                  const SizedBox(width: 6),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(
+                      trendText,
+                      style: AppFonts.display(fontSize: 22, weight: FontWeight.w800, color: trendColor),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'latest · ${avgs.length} semester${avgs.length > 1 ? 's' : ''}',
+              style: AppFonts.body(fontSize: 12.5, weight: FontWeight.w600, color: AppColors.muted),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return _PanelCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _PanelTitle('My grades'),
+          content,
+          _GoButton(key: const Key('dashboard_panel_open_grades'), label: 'Open My grades →', onTap: onOpen),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Activities" detail panel.
+class _ActivitiesPanel extends StatelessWidget {
+  const _ActivitiesPanel({required this.summary, required this.onOpen});
+  final DashboardActivitiesSummary summary;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    const accent = AppColors.dashPink;
+    final worksSuffix = summary.portfolioWorks > 0 ? ' · ${summary.portfolioWorks} works' : '';
+    final subtitle =
+        '${summary.clubsCount} club${summary.clubsCount != 1 ? 's' : ''} · ${summary.activityRows} entries$worksSuffix';
+
+    return _PanelCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _PanelTitle('Activities'),
+          _BigStat(value: '${summary.total}', subtitle: subtitle, accent: accent),
+          _GoButton(
+            key: const Key('dashboard_panel_open_activities'),
+            label: 'Open activities →',
+            onTap: onOpen,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Application materials" detail panel.
+class _MaterialsPanel extends StatelessWidget {
+  const _MaterialsPanel({required this.started, required this.onOpen});
+  final int started;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    const accent = AppColors.dashBlue;
+    final total = materialDocs.length;
+    final pct = total > 0 ? (started / total * 100).round() : 0;
+
+    return _PanelCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _PanelTitle('Application materials'),
+          _BigStat(value: '$started', subtitle: '/ $total started', accent: accent),
+          SizedBox(
+            width: double.infinity,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                height: 10,
+                color: AppColors.surface2,
+                alignment: Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: pct / 100,
+                  child: Container(
+                    key: const Key('dashboard_materials_progress_bar'),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(colors: [AppColors.teal, AppColors.orange]),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          _GoButton(
+            key: const Key('dashboard_panel_open_materials'),
+            label: 'Open materials →',
+            onTap: onOpen,
+          ),
+        ],
       ),
     );
   }
