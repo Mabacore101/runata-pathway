@@ -339,7 +339,7 @@ void main() {
   });
 
   group('side menu switching', () {
-    testWidgets('tapping a non-Overview item shows its placeholder and '
+    testWidgets('tapping a non-Overview item shows its real panel and '
         'hides the Overview panel', (tester) async {
       await pumpScreen(tester, 'dash_menu_switch');
 
@@ -349,8 +349,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('YOUR NEXT STEPS'), findsNothing);
-      expect(find.byKey(const Key('dashboard_panel_placeholder_grades')), findsOneWidget);
-      expect(find.text('Grades panel — coming next'), findsOneWidget);
+      expect(find.byKey(const Key('dashboard_panel_open_grades')), findsOneWidget);
+      expect(find.text('Record your marks after each report.'), findsOneWidget);
     });
 
     testWidgets('switching back to Overview restores it', (tester) async {
@@ -363,6 +363,277 @@ void main() {
       await tester.tap(find.byKey(const Key('dashboard_menu_overview')));
       await tester.pumpAndSettle();
       expect(find.text('YOUR NEXT STEPS'), findsOneWidget);
+    });
+  });
+
+  group('Target universities panel', () {
+    testWidgets('shows "No targets yet." when empty', (tester) async {
+      await pumpScreen(tester, 'dash_target_empty');
+      await tester.tap(find.byKey(const Key('dashboard_menu_target')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No targets yet.'), findsOneWidget);
+    });
+
+    testWidgets('shows a chip per target and the correct count', (tester) async {
+      await pumpScreen(
+        tester,
+        'dash_target_chips',
+        targets: [
+          UniversityTarget(id: 't1', major: 'CS', country: 'Germany', university: 'TU Munich'),
+          UniversityTarget(id: 't2', major: 'CS', country: 'China', university: 'Tsinghua'),
+        ],
+      );
+      await tester.tap(find.byKey(const Key('dashboard_menu_target')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('2'), findsOneWidget);
+      expect(find.text('TU Munich'), findsOneWidget);
+      expect(find.text('Tsinghua'), findsOneWidget);
+    });
+
+    testWidgets('"Open Target universities →" navigates to the real route',
+        (tester) async {
+      await pumpScreen(tester, 'dash_target_nav');
+      await tester.tap(find.byKey(const Key('dashboard_menu_target')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('dashboard_panel_open_target')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(AppRoutes.studentTargetUniversities), findsOneWidget);
+    });
+  });
+
+  group('Tests panel', () {
+    testWidgets('shows "None added yet." when empty', (tester) async {
+      await pumpScreen(tester, 'dash_tests_empty');
+      await tester.tap(find.byKey(const Key('dashboard_menu_tests')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('None added yet.'), findsOneWidget);
+    });
+
+    testWidgets('shows a chip with type + latest score per test', (tester) async {
+      await pumpScreen(
+        tester,
+        'dash_tests_chips',
+        tests: [TestEntry(id: 'e1', type: TestType.ielts, latest: '7.0')],
+      );
+      await tester.tap(find.byKey(const Key('dashboard_menu_tests')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('IELTS 7.0'), findsOneWidget);
+    });
+
+    testWidgets('"Open My tests →" navigates to the real route', (tester) async {
+      await pumpScreen(tester, 'dash_tests_nav');
+      await tester.tap(find.byKey(const Key('dashboard_menu_tests')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('dashboard_panel_open_tests')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(AppRoutes.studentTests), findsOneWidget);
+    });
+  });
+
+  group('Fit panel — all 4 branches', () {
+    testWidgets('no targets → prompt to pick one first', (tester) async {
+      await pumpScreen(tester, 'dash_fit_no_targets');
+      await tester.tap(find.byKey(const Key('dashboard_menu_fit')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Pick a target university first.'), findsOneWidget);
+    });
+
+    testWidgets('targets but no IELTS test → prompt to add IELTS', (tester) async {
+      await pumpScreen(
+        tester,
+        'dash_fit_no_ielts',
+        targets: [
+          UniversityTarget(
+            id: 't1',
+            major: 'CS',
+            country: 'Australia',
+            university: 'University of Melbourne',
+          ),
+        ],
+      );
+      await tester.tap(find.byKey(const Key('dashboard_menu_fit')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('in My tests to unlock fit', findRichText: true),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a real catalog match with a tracked IELTS requirement → '
+        'shows the fit chip and university name', (tester) async {
+      await pumpScreen(
+        tester,
+        'dash_fit_found',
+        targets: [
+          UniversityTarget(
+            id: 't1',
+            major: 'CS',
+            country: 'Australia',
+            university: 'University of Melbourne', // real entry, ielts: 6.5
+          ),
+        ],
+        tests: [TestEntry(id: 'e1', type: TestType.ielts, latest: '6.5')],
+      );
+      await tester.tap(find.byKey(const Key('dashboard_menu_fit')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Met'), findsOneWidget); // gap = 0 → met
+      expect(find.text('University of Melbourne'), findsOneWidget);
+    });
+
+    testWidgets('no tracked-IELTS match anywhere → non-IELTS routes message',
+        (tester) async {
+      await pumpScreen(
+        tester,
+        'dash_fit_non_ielts',
+        targets: [
+          UniversityTarget(
+            id: 't1',
+            major: 'CS',
+            country: 'Indonesia',
+            university: 'Universitas Indonesia (UI)', // real entry, ielts: null
+          ),
+        ],
+        tests: [TestEntry(id: 'e1', type: TestType.ielts, latest: '7.0')],
+      );
+      await tester.tap(find.byKey(const Key('dashboard_menu_fit')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('non-IELTS routes'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('"Open Target universities →" navigates correctly', (tester) async {
+      await pumpScreen(tester, 'dash_fit_nav');
+      await tester.tap(find.byKey(const Key('dashboard_menu_fit')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('dashboard_panel_open_fit')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(AppRoutes.studentTargetUniversities), findsOneWidget);
+    });
+  });
+
+  group('Grades panel', () {
+    testWidgets('shows the record-marks prompt when nothing is filled in',
+        (tester) async {
+      await pumpScreen(tester, 'dash_grades_empty');
+      await tester.tap(find.byKey(const Key('dashboard_menu_grades')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Record your marks after each report.'), findsOneWidget);
+    });
+
+    testWidgets('shows the latest average and semester count once filled in',
+        (tester) async {
+      await pumpScreen(
+        tester,
+        'dash_grades_filled',
+        gradeEntries: [
+          GradeSubjectEntry(
+            id: 'g1',
+            semesterCode: SemesterCode.gr11s1,
+            name: 'Math',
+            score: 85,
+            group: GradeSubjectGroup.coreSubjects,
+          ),
+        ],
+      );
+      await tester.tap(find.byKey(const Key('dashboard_menu_grades')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('85.0'), findsOneWidget);
+      expect(find.text('latest · 1 semester'), findsOneWidget);
+    });
+
+    testWidgets('"Open My grades →" navigates to the real route', (tester) async {
+      await pumpScreen(tester, 'dash_grades_nav');
+      await tester.tap(find.byKey(const Key('dashboard_menu_grades')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('dashboard_panel_open_grades')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(AppRoutes.studentGrades), findsOneWidget);
+    });
+  });
+
+  group('Activities panel', () {
+    testWidgets('shows the combined total and the club/entry breakdown',
+        (tester) async {
+      await pumpScreen(
+        tester,
+        'dash_activities_breakdown',
+        activitiesReport: StudentActivitiesReport(
+          sectionA: [ActivityEntry(activity: 'Debate Club')],
+        ),
+        clubSelection: StudentClubSelection(
+          anchorMajor: 'Computer Science',
+          rankedOthers: const ['Sports Club'],
+          submittedAt: DateTime(2026, 1, 1),
+        ),
+      );
+      await tester.tap(find.byKey(const Key('dashboard_menu_activities')));
+      await tester.pumpAndSettle();
+
+      // 1 activity row + (1 required + 1 ranked) clubs = 3 total.
+      expect(find.text('3'), findsOneWidget);
+      expect(find.textContaining('2 clubs'), findsOneWidget);
+      expect(find.textContaining('1 entries'), findsOneWidget);
+    });
+
+    testWidgets('"Open activities →" navigates to Application Materials',
+        (tester) async {
+      await pumpScreen(tester, 'dash_activities_nav');
+      await tester.tap(find.byKey(const Key('dashboard_menu_activities')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('dashboard_panel_open_activities')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(AppRoutes.studentMaterials), findsOneWidget);
+    });
+  });
+
+  group('Materials panel', () {
+    testWidgets('shows the started count and a non-empty progress bar',
+        (tester) async {
+      await pumpScreen(
+        tester,
+        'dash_materials_progress',
+        applicationDocs: {
+          'personal': ApplicationDocumentState(docKey: 'personal', content: {'g11': 'Draft'}),
+        },
+      );
+      await tester.tap(find.byKey(const Key('dashboard_menu_materials')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('1'), findsOneWidget);
+      expect(find.byKey(const Key('dashboard_materials_progress_bar')), findsOneWidget);
+    });
+
+    testWidgets('"Open materials →" navigates to the real route', (tester) async {
+      await pumpScreen(tester, 'dash_materials_nav');
+      await tester.tap(find.byKey(const Key('dashboard_menu_materials')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('dashboard_panel_open_materials')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(AppRoutes.studentMaterials), findsOneWidget);
     });
   });
 
