@@ -232,6 +232,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           hasFitData: targets.isNotEmpty && ielts != null,
           nextSteps: nextSteps,
           onOpenStep: (kind) => context.push(kind.route),
+          onSelectPanel: (panel) => setState(() => _panel = panel),
         );
       case DashboardPanel.target:
         return _TargetPanel(targets: targets, onOpen: () => context.push(AppRoutes.studentTargetUniversities));
@@ -472,6 +473,7 @@ class _OverviewPanel extends StatelessWidget {
     required this.hasFitData,
     required this.nextSteps,
     required this.onOpenStep,
+    required this.onSelectPanel,
   });
 
   final int targetsCount;
@@ -482,6 +484,12 @@ class _OverviewPanel extends StatelessWidget {
   final bool hasFitData;
   final List<DashboardNextStep> nextSteps;
   final ValueChanged<DashboardStepKind> onOpenStep;
+
+  /// Mirrors the JS's shared `[data-dv]` click handler — every mini-stat
+  /// tile carries the same `data-dv` attribute the side-menu buttons do,
+  /// so tapping one is a shortcut to that same detail panel, not just a
+  /// static number.
+  final ValueChanged<DashboardPanel> onSelectPanel;
 
   @override
   Widget build(BuildContext context) {
@@ -506,40 +514,52 @@ class _OverviewPanel extends StatelessWidget {
             childAspectRatio: 1.5,
             children: [
               _MiniStat(
+                key: const Key('dashboard_mini_stat_target'),
                 icon: '🎯',
                 value: '$targetsCount',
                 label: 'Target unis',
                 accent: AppColors.teal,
+                onTap: () => onSelectPanel(DashboardPanel.target),
               ),
               _MiniStat(
+                key: const Key('dashboard_mini_stat_tests'),
                 icon: '📝',
                 value: '$testsCount',
                 label: 'Tests',
                 accent: AppColors.dashPurple,
+                onTap: () => onSelectPanel(DashboardPanel.tests),
               ),
               _MiniStat(
+                key: const Key('dashboard_mini_stat_grades'),
                 icon: '📈',
                 value: lastAverage?.toStringAsFixed(1) ?? '—',
                 label: 'Latest avg',
                 accent: AppColors.dashGreen,
+                onTap: () => onSelectPanel(DashboardPanel.grades),
               ),
               _MiniStat(
+                key: const Key('dashboard_mini_stat_activities'),
                 icon: '🏆',
                 value: '$activitiesTotal',
                 label: 'Activities',
                 accent: AppColors.dashPink,
+                onTap: () => onSelectPanel(DashboardPanel.activities),
               ),
               _MiniStat(
+                key: const Key('dashboard_mini_stat_materials'),
                 icon: '📎',
                 value: '$materialsStarted/${materialDocs.length}',
                 label: 'Materials',
                 accent: AppColors.dashBlue,
+                onTap: () => onSelectPanel(DashboardPanel.materials),
               ),
               _MiniStat(
+                key: const Key('dashboard_mini_stat_fit'),
                 icon: '🧭',
                 value: hasFitData ? '✓' : '–',
                 label: 'Fit',
                 accent: AppColors.orangeDeep,
+                onTap: () => onSelectPanel(DashboardPanel.fit),
               ),
             ],
           ),
@@ -576,60 +596,68 @@ class _OverviewPanel extends StatelessWidget {
 
 class _MiniStat extends StatelessWidget {
   const _MiniStat({
+    super.key,
     required this.icon,
     required this.value,
     required this.label,
     required this.accent,
+    required this.onTap,
   });
 
   final String icon;
   final String value;
   final String label;
   final Color accent;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          border: Border.all(color: AppColors.line, width: 1.5),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // The `.dmini{border-top:4px solid var(--ac)}` accent —
-            // kept as a separate strip, not part of the Border above,
-            // since Flutter's BoxDecoration doesn't allow a borderRadius
-            // when a Border's sides have different colors (this one did:
-            // accent on top, line color on the other 3).
-            Container(height: 4, color: accent),
-            Padding(
-              padding: const EdgeInsets.all(11),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(icon, style: const TextStyle(fontSize: 16)),
-                  const SizedBox(height: 2),
-                  Text(
-                    value,
-                    style: AppFonts.display(fontSize: 20, weight: FontWeight.w800, color: accent),
-                  ),
-                  Text(
-                    label,
-                    style: AppFonts.body(
-                      fontSize: 10.5,
-                      weight: FontWeight.w600,
-                      color: AppColors.muted,
-                    ),
-                  ),
-                ],
-              ),
+      child: Material(
+        color: AppColors.surface,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.line, width: 1.5),
             ),
-          ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // The `.dmini{border-top:4px solid var(--ac)}` accent —
+                // kept as a separate strip, not part of the Border above,
+                // since Flutter's BoxDecoration doesn't allow a borderRadius
+                // when a Border's sides have different colors (this one did:
+                // accent on top, line color on the other 3).
+                Container(height: 4, color: accent),
+                Padding(
+                  padding: const EdgeInsets.all(11),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(icon, style: const TextStyle(fontSize: 16)),
+                      const SizedBox(height: 2),
+                      Text(
+                        value,
+                        style: AppFonts.display(fontSize: 20, weight: FontWeight.w800, color: accent),
+                      ),
+                      Text(
+                        label,
+                        style: AppFonts.body(
+                          fontSize: 10.5,
+                          weight: FontWeight.w600,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
