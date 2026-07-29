@@ -364,6 +364,42 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('YOUR NEXT STEPS'), findsOneWidget);
     });
+
+    testWidgets(
+        'tapping a mini-stat tile switches to its matching panel — '
+        'regression test: the JS shares one [data-dv] click handler '
+        'between the side menu AND the mini-stat tiles, so both must be '
+        'tappable shortcuts to the same panel, not just the menu',
+        (tester) async {
+      await pumpScreen(tester, 'dash_ministat_tap');
+
+      expect(find.text('YOUR NEXT STEPS'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('dashboard_mini_stat_grades')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('YOUR NEXT STEPS'), findsNothing);
+      expect(find.text('Record your marks after each report.'), findsOneWidget);
+    });
+
+    testWidgets('each of the 6 mini-stat tiles opens its own correct panel',
+        (tester) async {
+      final expectations = {
+        'dashboard_mini_stat_target': 'Open Target universities →',
+        'dashboard_mini_stat_tests': 'Open My tests →',
+        'dashboard_mini_stat_grades': 'Open My grades →',
+        'dashboard_mini_stat_activities': 'Open activities →',
+        'dashboard_mini_stat_materials': 'Open materials →',
+        'dashboard_mini_stat_fit': 'Open Target universities →',
+      };
+
+      for (final entry in expectations.entries) {
+        await pumpScreen(tester, 'dash_ministat_each_${entry.key}');
+        await tester.tap(find.byKey(Key(entry.key)));
+        await tester.pumpAndSettle();
+        expect(find.text(entry.value), findsOneWidget, reason: entry.key);
+      }
+    });
   });
 
   group('Target universities panel', () {
