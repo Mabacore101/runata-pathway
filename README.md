@@ -10,7 +10,8 @@ that with a real Flutter app and proper structural separation between roles.
 
 🚧 In active development. **Student role is the only committed scope** for
 the initial build; Parent and Staff are stretch goals pending behavioral QA
-on those roles.
+on those roles — see "Scope closeout" below for that decision stated
+explicitly.
 
 - [x] Day 0 — Foundation (dependencies, folder skeleton, data models, routing skeleton)
 - [x] Day 1 — Choose Role, Student Login, Homepage, sign-out
@@ -19,7 +20,7 @@ on those roles.
 - [x] Day 4 — My Clubs
 - [x] Day 5 — Application Materials (part 1)
 - [x] Day 6 — Application Materials (part 2), Counsellor's Corner, Pathways, Nav Grid, Dashboard
-- [ ] Day 7 — Integration, polish, device pass
+- [x] Day 7 — Header polish (logo, sign-out pill, AppBarTheme), manual device pass, closeout docs — no automated integration test (see planning.md §8 for that decision)
 
 ## Roles
 
@@ -56,8 +57,8 @@ flutter run
 ```
 
 Requires a connected device or emulator with USB debugging enabled. iOS is
-written to be correct but hasn't been verified on a physical device yet (no
-Mac access during initial development).
+written to be correct but unverified on a physical device — see "Scope
+closeout" below for the full status.
 
 Generated Hive files are already checked in, so a fresh clone doesn't need
 anything beyond the above. If you add or change a `@HiveType` model
@@ -263,6 +264,23 @@ than fixed now:
   foundational change, not a My Clubs–scoped one. Re-surfaced during Day 6
   manual QA (Dashboard's Activities count showing stale data after
   switching test accounts) — same underlying limitation, not a new one.
+
+## Scope closeout (Day 7)
+
+Two items stated explicitly here, not left implicit across scattered
+mentions, per the Day 7 closeout pass:
+
+- **iOS: written to be correct, never verified on a physical device.**
+  Every day since Day 0 targeted both platforms in code, but all manual
+  testing across all 7 days ran on a physical Android phone via USB
+  debugging — Mac access never materialized at any point in the project.
+  This is a real handoff item for whoever picks this up next, not a
+  silent gap.
+- **Parent and Staff roles remain deliberately unstarted.** Per the
+  original commitment in planning.md §3, only the Student role was ever
+  in scope for this 7-day build. The `parent/` and `staff/` folders under
+  `lib/features/` (see "Project structure" below) exist as placeholders
+  for that future work, not incomplete features from this project.
 
 ### Deliberate deviations from the original site (Day 2)
 

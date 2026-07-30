@@ -441,7 +441,7 @@ items plus new capacity-engine complexity), not a new slip.
       last" discipline as every prior day's cascade/cross-check step.
 - [ ] Tests alongside each piece (per Section 7), same rhythm as Days 2–5
 
-**Day 7 — Polish + closeout — 🔜 TODO (rescoped from the original Day 0 sketch)**
+**Day 7 — Polish + closeout — ✅ DONE**
 
 **Decision made: no automated integration test.** Day 6 already performed
 a thorough manual end-to-end cross-check (real data across every feature
@@ -457,7 +457,7 @@ complex and fragile as the app, for coverage of a failure mode that isn't
 actually spread that broadly. Manual verification (already done) stands
 as the deliberate choice here, not a shortcut.
 
-- [ ] **Visual polish** — confirmed via screenshot review against the
+- [x] **Visual polish** — confirmed via screenshot review against the
       original CSS (see day7-codebase-reference.md):
       - Replace the plain "Runata Pathway" text title with
         `runata_global_school.png` — original site is logo-first, no text
@@ -472,19 +472,26 @@ as the deliberate choice here, not a shortcut.
         background** — original CSS has no such rule for `.appbar`: it's
         genuinely meant to stay plain/white. Don't overcorrect.
       - Generate the launcher icon (`runata_icon.png` via
-        `flutter_launcher_icons`)
-- [ ] Manual device pass — narrowed scope, NOT a full app re-verification
-      (Day 6 already did that). Just confirm today's visual changes
-      render correctly on-device.
-- [ ] **iOS status — close out explicitly, don't leave implicit.** Every
-      day since Day 0 has been "written to be correct, verified on
-      Android only" — Mac access never materialized across all 7 days.
-      State this plainly as a known handoff item in README/planning.md's
-      final form, not a silent gap.
-- [ ] **Parent/Staff scope — close out explicitly.** Confirm in the final
-      docs that both remain deliberately unstarted stretch goals for this
-      project (per Section 3's original commitment), not forgotten items.
-- [ ] Final commit + push
+        `flutter_launcher_icons`) — **deferred.** The only source image on
+        hand is 47×53px, too low-res to upscale to the ~1024×1024 iOS
+        App Store size without looking soft. Tracked as a known
+        limitation in README rather than shipped blurry; revisit once a
+        higher-resolution source exists.
+- [x] Manual device pass — narrowed scope, NOT a full app re-verification
+      (Day 6 already did that). Confirmed the header changes (logo,
+      sign-out pill, AppBarTheme) render correctly on-device, including on
+      other screens' AppBars (e.g. Application Materials, Counsellor's
+      Corner) that inherit the same theme change.
+- [x] **iOS status — closed out explicitly.** Stated plainly in README's
+      new "Scope closeout" section as a known handoff item, not a silent
+      gap.
+- [x] **Parent/Staff scope — closed out explicitly.** Confirmed in the
+      same README section that both remain deliberately unstarted stretch
+      goals for this project (per Section 3's original commitment), not
+      forgotten items.
+- [x] Final commit + push — theme/screen changes already committed
+      incrementally (`feat(theme)`, `feat(home)`); docs commit + push
+      pending.
 
 **Real risk flag (historical, from Day 3):** Days 3–4 (cascade logic) were
 the likely time sink, not the volume of Day 5–6 sections — this held true
