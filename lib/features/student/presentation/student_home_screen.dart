@@ -101,12 +101,18 @@ class StudentHomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Runata Pathway'),
+        // `.appbar img{height:28px}` — logo-first, no text title at all in
+        // the original markup (`<header class="appbar"><img ...>`).
+        title: Image.asset(
+          'assets/images/runata_global_school.png',
+          height: 28,
+          fit: BoxFit.contain,
+          semanticLabel: 'Runata Global School',
+        ),
         actions: [
-          IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout),
-            onPressed: () => _signOut(context, ref),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: _SignOutPill(onTap: () => _signOut(context, ref)),
           ),
         ],
       ),
@@ -163,6 +169,52 @@ class StudentHomeScreen extends ConsumerWidget {
   void _signOut(BuildContext context, WidgetRef ref) {
     ref.read(authControllerProvider.notifier).signOut();
     context.go(AppRoutes.chooseRole);
+  }
+}
+
+/// `.staff` equivalent, used here purely for its pill *shape* — the
+/// original class also carries shared role-switcher state elsewhere in
+/// the JS, which this Student-only rebuild has no equivalent for. CSS:
+/// `border:1px solid var(--line);border-radius:20px;padding:6px 12px;
+/// font-size:11px;font-weight:600;color:var(--muted);background:none;
+/// display:inline-flex;gap:6px`. No font-family override in that rule,
+/// so it inherits the body font (Inter/`AppFonts.body`), not mono.
+class _SignOutPill extends StatelessWidget {
+  const _SignOutPill({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: const Key('appbar_sign_out'),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.line),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.logout, size: 14, color: AppColors.muted),
+              const SizedBox(width: 6),
+              Text(
+                'Sign out',
+                style: AppFonts.body(
+                  weight: FontWeight.w600,
+                  fontSize: 11,
+                  color: AppColors.muted,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
