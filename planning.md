@@ -441,14 +441,55 @@ items plus new capacity-engine complexity), not a new slip.
       last" discipline as every prior day's cascade/cross-check step.
 - [ ] Tests alongside each piece (per Section 7), same rhythm as Days 2–5
 
-**Day 7 — Integration + polish + buffer**
-- Integration test: full path login → Profile → Target Universities → My Clubs → submit → Homepage state updates
-- Manual device pass on physical Android phone
-- Fix whatever surfaces
-- Final commit + push
+**Day 7 — Polish + closeout — 🔜 TODO (rescoped from the original Day 0 sketch)**
 
-**Real risk flag:** Days 3–4 (cascade logic) are the likely time sink, not the volume
-of Day 5–6 sections (repetitive once one template is built).
+**Decision made: no automated integration test.** Day 6 already performed
+a thorough manual end-to-end cross-check (real data across every feature
+simultaneously, confirmed in that day's own entry above) — considered
+sufficient rather than also writing an automated version. Reasoning: the
+cascade bugs that actually surfaced across this project (Days 3, 4, 6)
+were all confined to one identifiable chain (anchor major → clubs →
+materials), not spread evenly across the app — roughly 80% of the app's
+features are independent of each other, per direct review of the
+project's own flowchart. A blanket automated test attempting to model
+every path/convergence in that flowchart would itself become nearly as
+complex and fragile as the app, for coverage of a failure mode that isn't
+actually spread that broadly. Manual verification (already done) stands
+as the deliberate choice here, not a shortcut.
+
+- [ ] **Visual polish** — confirmed via screenshot review against the
+      original CSS (see day7-codebase-reference.md):
+      - Replace the plain "Runata Pathway" text title with
+        `runata_global_school.png` — original site is logo-first, no text
+        title at all (`.appbar img{height:28px}` — small, specific size)
+      - Style the sign-out control as the original's pill-shaped bordered
+        button (`.staff` class shape), not a bare icon
+      - Wire `AppBarTheme` to reference `AppFonts`/the app's color tokens
+        specifically — confirmed the rest of the theme pipeline already
+        works (Homepage's "Hi Aditya" heading proves it), this is
+        narrowly an `AppBarTheme` gap, not a broader theme failure
+      - **Correction: the header should NOT get a colored/branded
+        background** — original CSS has no such rule for `.appbar`: it's
+        genuinely meant to stay plain/white. Don't overcorrect.
+      - Generate the launcher icon (`runata_icon.png` via
+        `flutter_launcher_icons`)
+- [ ] Manual device pass — narrowed scope, NOT a full app re-verification
+      (Day 6 already did that). Just confirm today's visual changes
+      render correctly on-device.
+- [ ] **iOS status — close out explicitly, don't leave implicit.** Every
+      day since Day 0 has been "written to be correct, verified on
+      Android only" — Mac access never materialized across all 7 days.
+      State this plainly as a known handoff item in README/planning.md's
+      final form, not a silent gap.
+- [ ] **Parent/Staff scope — close out explicitly.** Confirm in the final
+      docs that both remain deliberately unstarted stretch goals for this
+      project (per Section 3's original commitment), not forgotten items.
+- [ ] Final commit + push
+
+**Real risk flag (historical, from Day 3):** Days 3–4 (cascade logic) were
+the likely time sink, not the volume of Day 5–6 sections — this held true
+across the whole project and is part of why Day 7's manual-only decision
+above is reasonable rather than risky.
 
 ## 9. Environment (for reference)
 
