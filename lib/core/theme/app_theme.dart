@@ -163,6 +163,26 @@ ThemeData buildStudentTheme() {
     useMaterial3: true,
     colorScheme: colorScheme,
     scaffoldBackgroundColor: AppColors.bg,
+    // `.appbar` in the original CSS has no explicit background — it just
+    // sits on the page's own `var(--bg)`, not a separate white/branded
+    // bar (confirmed in day1-trimmed-reference.md). `surfaceTintColor` +
+    // `scrolledUnderElevation: 0` stop Material 3 from tinting/raising it
+    // once content scrolls underneath, which would otherwise introduce a
+    // shaded bar that isn't in the source spec.
+    appBarTheme: AppBarTheme(
+      backgroundColor: AppColors.bg,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      foregroundColor: AppColors.ink,
+      iconTheme: const IconThemeData(color: AppColors.ink),
+      titleTextStyle: AppFonts.display(
+        weight: FontWeight.w700,
+        fontSize: 18,
+        color: AppColors.ink,
+      ),
+      centerTitle: false,
+    ),
     textTheme: baseTextTheme.copyWith(
       displaySmall: AppFonts.display(
         weight: FontWeight.w700,
