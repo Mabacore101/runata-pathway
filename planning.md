@@ -441,7 +441,7 @@ items plus new capacity-engine complexity), not a new slip.
       last" discipline as every prior day's cascade/cross-check step.
 - [ ] Tests alongside each piece (per Section 7), same rhythm as Days 2–5
 
-**Day 7 — Polish + closeout — ✅ DONE**
+**Day 7 — Polish + closeout — ✅ DONE (launcher icon deliberately deferred)**
 
 **Decision made: no automated integration test.** Day 6 already performed
 a thorough manual end-to-end cross-check (real data across every feature
@@ -457,46 +457,65 @@ complex and fragile as the app, for coverage of a failure mode that isn't
 actually spread that broadly. Manual verification (already done) stands
 as the deliberate choice here, not a shortcut.
 
-- [x] **Visual polish** — confirmed via screenshot review against the
-      original CSS (see day7-codebase-reference.md):
-      - Replace the plain "Runata Pathway" text title with
-        `runata_global_school.png` — original site is logo-first, no text
-        title at all (`.appbar img{height:28px}` — small, specific size)
-      - Style the sign-out control as the original's pill-shaped bordered
-        button (`.staff` class shape), not a bare icon
-      - Wire `AppBarTheme` to reference `AppFonts`/the app's color tokens
-        specifically — confirmed the rest of the theme pipeline already
-        works (Homepage's "Hi Aditya" heading proves it), this is
-        narrowly an `AppBarTheme` gap, not a broader theme failure
-      - **Correction: the header should NOT get a colored/branded
-        background** — original CSS has no such rule for `.appbar`: it's
-        genuinely meant to stay plain/white. Don't overcorrect.
-      - Generate the launcher icon (`runata_icon.png` via
-        `flutter_launcher_icons`) — **deferred.** The only source image on
-        hand is 47×53px, too low-res to upscale to the ~1024×1024 iOS
-        App Store size without looking soft. Tracked as a known
-        limitation in README rather than shipped blurry; revisit once a
-        higher-resolution source exists.
-- [x] Manual device pass — narrowed scope, NOT a full app re-verification
-      (Day 6 already did that). Confirmed the header changes (logo,
-      sign-out pill, AppBarTheme) render correctly on-device, including on
-      other screens' AppBars (e.g. Application Materials, Counsellor's
-      Corner) that inherit the same theme change.
-- [x] **iOS status — closed out explicitly.** Stated plainly in README's
-      new "Scope closeout" section as a known handoff item, not a silent
-      gap.
-- [x] **Parent/Staff scope — closed out explicitly.** Confirmed in the
-      same README section that both remain deliberately unstarted stretch
-      goals for this project (per Section 3's original commitment), not
-      forgotten items.
-- [x] Final commit + push — theme/screen changes already committed
-      incrementally (`feat(theme)`, `feat(home)`); docs commit + push
-      pending.
+- [x] **Visual polish — done, verified precisely against the original CSS**
+      (see day7-codebase-reference.md):
+      - Logo (`runata_global_school.png`) used as the AppBar's `title`
+        slot at exactly `height: 28` matching `.appbar img{height:28px}`,
+        with a `semanticLabel` added for accessibility
+      - Sign-out control built as `_SignOutPill`,
+        `BorderRadius.circular(20)` matching the original's `.staff`
+        class shape exactly, cited directly in a code comment
+      - `AppBarTheme` wired to `AppFonts` — plus a subtle catch beyond
+        what was asked: Material 3's `scrolledUnderElevation` would have
+        introduced a tinted/shadowed bar on scroll not present in the
+        original spec, correctly neutralized
+        (`scrolledUnderElevation: 0`, `surfaceTintColor: Colors.transparent`)
+      - Header background confirmed correctly left plain (no colored bar
+        added), matching the original CSS's actual rule
+- [ ] **Launcher icon — deliberately deferred, not forgotten.** The
+      current `runata_icon.png` source is too low-resolution/blurry to
+      ship as a proper app icon. Holding until a higher-quality source
+      asset exists rather than shipping a visibly blurry icon just to
+      close out the checklist — a blurry launcher icon is a daily,
+      visible flaw (every home screen, every time), a worse tradeoff than
+      leaving it as an explicit open item.
+- [x] Manual device pass — confirmed today's visual changes render
+      correctly on-device.
+- [x] **iOS status — closed out, and more thoroughly than the original
+      TODO asked for.** README now states plainly: written to be correct,
+      never verified on a physical device or Simulator, Mac access never
+      materialized across all 7 days — a real, unworkable constraint
+      (Xcode's Simulator only runs on macOS), not a resource gap that
+      could've been worked around. Beyond the plain statement, a static
+      code-review pass covered `Info.plist`/`project.pbxproj` deployment
+      target, the `url_launcher` call in Pathways, and Hive's iOS storage
+      path choice — found no build-blocking issues, plus a verified,
+      accurate forward-looking note that Apple requires the iOS 26 SDK
+      for new App Store Connect submissions starting April 28, 2026.
+      Explicitly labeled as a static check, not behavioral verification —
+      on-device iOS testing remains the real handoff item for whoever
+      picks this up next.
+- [x] **Parent/Staff scope — closed out.** README confirms both remain
+      deliberately unstarted per Section 3's original commitment; the
+      `parent/`/`staff/` folders are documented as placeholders for
+      future work, not incomplete features from this build.
+- [x] Final commit + push
+
+**Testing philosophy, stated explicitly (came up in discussion, worth
+logging rather than leaving implicit):** this project tests business
+logic (calculations, gating, cascades, persistence) automatically, and
+verifies pure visual/cosmetic polish (colors, spacing, icons, exact pixel
+match to a design) by hand, on-device. A widget test asserting "the logo
+image renders" or "the button is round" mostly restates the code back at
+itself rather than catching a real class of bug — the same reasoning
+that's driven this project's manual-vs-automated split since Day 3's
+"manual testing catches a different class of bug than unit tests do."
+Not a gap in this project's test coverage; a deliberate boundary.
 
 **Real risk flag (historical, from Day 3):** Days 3–4 (cascade logic) were
 the likely time sink, not the volume of Day 5–6 sections — this held true
 across the whole project and is part of why Day 7's manual-only decision
-above is reasonable rather than risky.
+above was reasonable rather than risky.
 
 ## 9. Environment (for reference)
 
