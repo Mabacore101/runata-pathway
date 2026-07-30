@@ -270,11 +270,31 @@ than fixed now:
 Two items stated explicitly here, not left implicit across scattered
 mentions, per the Day 7 closeout pass:
 
-- **iOS: written to be correct, never verified on a physical device.**
-  Every day since Day 0 targeted both platforms in code, but all manual
-  testing across all 7 days ran on a physical Android phone via USB
-  debugging — Mac access never materialized at any point in the project.
-  This is a real handoff item for whoever picks this up next, not a
+- **iOS: written to be correct, never verified on a physical device — a
+  manual code-review pass stands in for it.** Every day since Day 0
+  targeted both platforms in code, but all manual testing across all 7
+  days ran on a physical Android phone via USB debugging — Mac access
+  never materialized at any point in the project. This isn't a resource
+  gap that can be worked around: Xcode's iOS Simulator only runs on
+  macOS, with no real cross-platform substitute the way Android's
+  emulator has. In lieu of that, a targeted review of the iOS-specific
+  config and code paths (`Info.plist`, `project.pbxproj`, the
+  `url_launcher` call in Pathways, Hive's storage path resolution) found
+  no build-blocking issues: `IPHONEOS_DEPLOYMENT_TARGET` (13.0) clears
+  Xcode 16+'s 12.0 floor; `Info.plist` needs no additional entries since
+  Pathways' external-link call never invokes `canLaunchUrl()` and
+  Portfolio has no file/image picker to require a permission string; and
+  Hive's default `getApplicationDocumentsDirectory()` path resolves to
+  iOS's `NSDocumentDirectory` — an iCloud-backed, potentially
+  user-visible location, but the *appropriate* one here since
+  Profile/Grades/Tests/Portfolio are genuine user data, not disposable
+  cache. One forward-looking note, not a code change: Apple made the iOS
+  26 SDK mandatory for new App Store Connect submissions as of April 28,
+  2026, so whichever machine eventually builds this for real needs Xcode
+  26+ — the deployment target itself doesn't need to move. None of this
+  replaces actually running the app on-device or in Simulator — it's a
+  static check, not behavioral verification — so on-device iOS testing
+  remains the real handoff item for whoever picks this up next, not a
   silent gap.
 - **Parent and Staff roles remain deliberately unstarted.** Per the
   original commitment in planning.md §3, only the Student role was ever
