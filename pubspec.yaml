@@ -55,6 +55,7 @@ dev_dependencies:
   build_runner: ^2.15.1
   hive_ce_generator: ^1.11.2
   hive_ce_test: ^2.0.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -100,3 +101,38 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# flutter_launcher_icons config (Day 7 — launcher icon, previously deferred
+# for low source resolution, now unblocked with
+# runata_global_school_icon_only.png).
+#
+# Both assets below are pre-processed square 1024x1024 derivatives of that
+# source (see the accompanying icon-generation notes), not the raw crop —
+# feeding the raw 464x513 non-square PNG directly would get squished/
+# stretched by the generator rather than padded, a known behavior of this
+# tool, not a bug in our source image.
+#
+# - `image_path` (used for iOS + the legacy/pre-adaptive Android icon):
+#   opaque, background baked in at ~90% fill. iOS App Store review rejects
+#   icons with an alpha channel, so `remove_alpha_ios: true` is kept as a
+#   safety net even though the source is already fully opaque — belt and
+#   suspenders, not relying on either mechanism alone.
+# - `adaptive_icon_foreground` (modern Android 8+ adaptive icon): kept
+#   transparent, crest scaled to ~62% fill so it sits inside the ~66% "safe
+#   zone" every OEM launcher mask (circle/squircle/rounded-square/teardrop)
+#   actually shows — this is what avoids the "odd cropping" planning.md
+#   flagged as a risk. `adaptive_icon_background` uses AppColors.bg
+#   (#EBF0EE) rather than the crest's own teal/orange, since either brand
+#   color would flatten contrast against half the crest (it's a two-tone
+#   teal/orange badge — a teal background erases the teal quadrants, an
+#   orange background erases the orange ones); a neutral background is the
+#   only choice that keeps both halves legible, and reusing the app's own
+#   background token keeps the icon visually "in family" with the rest of
+#   the theme rather than picking an arbitrary neutral.
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/runata_icon_flat_1024.png"
+  remove_alpha_ios: true
+  adaptive_icon_background: "#EBF0EE"
+  adaptive_icon_foreground: "assets/images/runata_icon_adaptive_fg_1024.png"
