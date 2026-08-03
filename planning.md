@@ -472,13 +472,18 @@ as the deliberate choice here, not a shortcut.
         (`scrolledUnderElevation: 0`, `surfaceTintColor: Colors.transparent`)
       - Header background confirmed correctly left plain (no colored bar
         added), matching the original CSS's actual rule
-- [ ] **Launcher icon — deliberately deferred, not forgotten.** The
-      current `runata_icon.png` source is too low-resolution/blurry to
-      ship as a proper app icon. Holding until a higher-quality source
-      asset exists rather than shipping a visibly blurry icon just to
-      close out the checklist — a blurry launcher icon is a daily,
-      visible flaw (every home screen, every time), a worse tradeoff than
-      leaving it as an explicit open item.
+- [ ] **Launcher icon — no longer blocked, proceeding today.** The
+      earlier `runata_icon.png` was too low-resolution/blurry (deferred
+      for that reason, see prior entry above — not forgotten, just
+      correctly held back). A proper source now exists:
+      `runata_global_school_icon_only.png` — cropped to just the crest
+      (no wordmark/tagline text, which would be unreadable at icon size),
+      genuinely transparent background (confirmed programmatically: RGBA,
+      alpha=0 at all four corners, not just a light-gray fill that looks
+      transparent). Today's task: add `flutter_launcher_icons` as a dev
+      dependency, point `image_path` at this file, run the generator, and
+      confirm on-device it renders cleanly — no stray background box, no
+      odd cropping from Android/iOS icon masking.
 - [x] Manual device pass — confirmed today's visual changes render
       correctly on-device.
 - [x] **iOS status — closed out, and more thoroughly than the original
