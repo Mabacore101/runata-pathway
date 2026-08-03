@@ -441,7 +441,7 @@ items plus new capacity-engine complexity), not a new slip.
       last" discipline as every prior day's cascade/cross-check step.
 - [ ] Tests alongside each piece (per Section 7), same rhythm as Days 2–5
 
-**Day 7 — Polish + closeout — ✅ DONE (launcher icon deliberately deferred)**
+**Day 7 — Polish + closeout — ✅ DONE (fully closed out, including the launcher icon)**
 
 **Decision made: no automated integration test.** Day 6 already performed
 a thorough manual end-to-end cross-check (real data across every feature
@@ -472,18 +472,23 @@ as the deliberate choice here, not a shortcut.
         (`scrolledUnderElevation: 0`, `surfaceTintColor: Colors.transparent`)
       - Header background confirmed correctly left plain (no colored bar
         added), matching the original CSS's actual rule
-- [ ] **Launcher icon — no longer blocked, proceeding today.** The
-      earlier `runata_icon.png` was too low-resolution/blurry (deferred
-      for that reason, see prior entry above — not forgotten, just
-      correctly held back). A proper source now exists:
-      `runata_global_school_icon_only.png` — cropped to just the crest
-      (no wordmark/tagline text, which would be unreadable at icon size),
-      genuinely transparent background (confirmed programmatically: RGBA,
-      alpha=0 at all four corners, not just a light-gray fill that looks
-      transparent). Today's task: add `flutter_launcher_icons` as a dev
-      dependency, point `image_path` at this file, run the generator, and
-      confirm on-device it renders cleanly — no stray background box, no
-      odd cropping from Android/iOS icon masking.
+- [x] **Launcher icon — DONE, verified on-device.** Superseded the
+      earlier blurry `runata_icon.png` with `runata_global_school_icon_only.png`
+      (crest only, no wordmark, confirmed genuinely transparent). Config
+      uses two purpose-built 1024x1024 derivatives rather than the raw
+      crop directly (avoids the generator's squish/stretch behavior on
+      non-square sources): an opaque flat version for iOS/legacy Android
+      (`remove_alpha_ios: true` kept as a belt-and-suspenders safety net
+      alongside the pre-flattened source, since Apple App Store review
+      rejects icons with an alpha channel), and a transparent adaptive
+      foreground scaled to ~62% fill — inside Android's ~66% adaptive-icon
+      safe zone, so OEM launcher masks (circle/squircle/rounded-square/
+      teardrop) don't clip the crest. Background uses the app's own
+      `AppColors.bg` token rather than the crest's own teal/orange
+      (either would erase contrast against the opposite-colored half of
+      the two-tone badge). **Confirmed working on physical device
+      home screen** — full crest visible, no cropping, no stray
+      background box.
 - [x] Manual device pass — confirmed today's visual changes render
       correctly on-device.
 - [x] **iOS status — closed out, and more thoroughly than the original
