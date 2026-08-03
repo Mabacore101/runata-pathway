@@ -20,7 +20,7 @@ explicitly.
 - [x] Day 4 — My Clubs
 - [x] Day 5 — Application Materials (part 1)
 - [x] Day 6 — Application Materials (part 2), Counsellor's Corner, Pathways, Nav Grid, Dashboard
-- [x] Day 7 — Header polish (logo, sign-out pill, AppBarTheme), manual device pass, closeout docs — no automated integration test (see planning.md §8 for that decision)
+- [x] Day 7 — Header polish (logo, sign-out pill, AppBarTheme), launcher icon (Android adaptive + iOS, once a proper crest-only source replaced the original low-res one), manual device pass, closeout docs — no automated integration test (see planning.md §8 for that decision)
 
 ## Roles
 
@@ -47,6 +47,7 @@ lib/features/
 | Code generation | `build_runner` + `hive_ce_generator` — generates Hive TypeAdapters (`*.g.dart`) and the adapter registrar (`lib/hive_registrar.g.dart`); both are checked into version control per Hive CE's own convention, not hand-edited |
 | Backend | Local-only for now — no Supabase project connected yet |
 | External links | `url_launcher` — Pathways' "Open the document" button, added Day 6 (not a dependency before this) |
+| App icon | `flutter_launcher_icons` (dev dependency) — generates the Android adaptive icon and iOS icon set from the crest-only logo, added Day 7. Two pre-processed 1024x1024 derivatives feed it: an opaque version for iOS/legacy Android, and a transparent one scaled to Android's adaptive "safe zone" so OEM launcher masks don't clip it |
 | Testing | `flutter_test` + `mocktail` + `hive_ce_test` |
 
 ## Getting started
